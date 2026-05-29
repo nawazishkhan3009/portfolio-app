@@ -1,8 +1,6 @@
 name: Build, Push & Update Helm Values
 
 on:
-  pull_request:
-    branches: [main]
   push:
     branches: [main]
 
@@ -13,33 +11,7 @@ env:
   GITOPS_REPO: nawazishkhan3009/portfolio-gitops
 
 jobs:
-  # ── Go formatting (PRs only) ──
-  format:
-    if: github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout PR branch
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ github.head_ref }}
-
-      - uses: actions/setup-go@v5
-        with:
-          go-version-file: 'backend/go.mod'
-
-      - name: Format and auto‑commit
-        run: |
-          gofmt -w .
-          if [ -n "$(git status --porcelain)" ]; then
-            git config user.name "github-actions[bot]"
-            git config user.email "github-actions[bot]@users.noreply.github.com"
-            git commit -am "style: gofmt"
-            git push
-          fi
-
-  # ── Build, push & update GitOps (only on push to main) ──
   build-and-update:
-    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout app code
