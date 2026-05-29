@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import './App.css'
+import config from './config'
 
 const cloudLogos = {
   Azure: '☁️',
@@ -161,9 +162,10 @@ function App() {
         <h3 className="section-heading">Let's Connect</h3>
         <p>Open to Cloud, DevOps, SRE, and Platform Engineering opportunities.</p>
         <div className="contact-links">
-          <a href="mailto:nawazish@nawazishkhan.click">Email</a>
-          <a href="https://github.com/nawazishkhan3009" target="_blank" rel="noopener noreferrer">GitHub</a>
-          <a href="https://linkedin.com/in/yourprofile" target="_blank" rel="noopener noreferrer">LinkedIn</a>
+          <a href={`mailto:${config.email}`}>Email</a>
+          <a href={config.github} target="_blank" rel="noopener noreferrer">GitHub</a>
+          <a href={config.linkedin} target="_blank" rel="noopener noreferrer">LinkedIn</a>
+          <a href={config.xing} target="_blank" rel="noopener noreferrer">Xing</a>
         </div>
       </section>
 
