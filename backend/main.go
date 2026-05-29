@@ -7,13 +7,39 @@ import (
 	"net/http"
 	"runtime"
 	"time"
+
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 var startTime = time.Now()
 
+// Prometheus metrics
+var (
+	clusterUp = promauto.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "cluster_up",
+			Help: "Whether a cloud cluster is reachable (1 = up, 0 = down).",
+		},
+		[]string{"provider", "region"},
+	)
+)
+
+// CloudStatus matches the dummy data we want to expose
+type CloudStatus struct {
+	Name      string `json:"name"`
+	Provider  string `json:"provider"`
+	Region    string `json:"region"`
+	Online    bool   `json:"online"`
+	LatencyMs int64  `json:"latencyMs"`
+	Version   string `json:"version"`
+}
+
 func main() {
 	http.HandleFunc("/api/status", statusHandler)
 	http.HandleFunc("/api/metrics", metricsHandler)
+	http.Handle("/metrics", promhttp.Handler()) // standard Prometheus scrape endpoint
 
 	port := ":8080"
 	log.Printf("Backend listening on %s\n", port)
@@ -21,11 +47,38 @@ func main() {
 }
 
 func statusHandler(w http.ResponseWriter, r *http.Request) {
+	// Dummy data – replace with real cluster health checks later
+	clusters := []CloudStatus{
+		{Name: "portfolio-azure", Provider: "Azure", Region: "westeurope", Online: true, LatencyMs: 12, Version: "v1.0.0"},
+		{Name: "portfolio-gcp", Provider: "GCP", Region: "europe-west1", Online: true, LatencyMs: 8, Version: "v1.0.0"},
+		{Name: "portfolio-aws", Provider: "AWS", Region: "eu-west-1", Online: true, LatencyMs: 15, Version: "v1.0.0"},
+	}
+
+	// Update Prometheus metric for each cluster
+	for _, c := range clusters {
+		val := 0.0
+		if c.Online {
+			val = 1.0
+		}
+		clusterUp.WithLabelValues(c.Provider, c.Region).Set(val)
+	}
+
+	online := 0
+	for _, c := range clusters {
+		if c.Online {
+			online++
+		}
+	}
+
+	resp := map[string]interface{}{
+		"clusters":    clusters,
+		"totalOnline": online,
+		"totalCount":  len(clusters),
+		"timestamp":   time.Now().Unix(),
+	}
+
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{
-		"status": "ok",
-		"time":   time.Now().UTC().Format(time.RFC3339),
-	})
+	json.NewEncoder(w).Encode(resp)
 }
 
 func metricsHandler(w http.ResponseWriter, r *http.Request) {
