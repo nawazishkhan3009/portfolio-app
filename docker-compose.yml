@@ -7,6 +7,10 @@ services:
     depends_on:
       - backend
   backend:
+    environment:
+    - CLUSTER_GCP_URL=https://gcp.nawazishkhan.click
+    - CLUSTER_AZURE_URL=https://azure.nawazishkhan.click
+    - CLUSTER_AWS_URL=https://aws.nawazishkhan.click
     build: ./backend
     ports:
       - "8080:8080"
