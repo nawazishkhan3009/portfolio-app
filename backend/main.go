@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"runtime"
 	"time"
 
@@ -24,9 +25,16 @@ var (
 		},
 		[]string{"provider", "region"},
 	)
+	clusterLatency = promauto.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "cluster_latency_ms",
+			Help: "Last measured latency to cluster health endpoint in milliseconds.",
+		},
+		[]string{"provider", "region"},
+	)
 )
 
-// CloudStatus matches the dummy data we want to expose
+// CloudStatus represents a single cluster's health
 type CloudStatus struct {
 	Name      string `json:"name"`
 	Provider  string `json:"provider"`
@@ -36,10 +44,54 @@ type CloudStatus struct {
 	Version   string `json:"version"`
 }
 
+// clusterConfig defines where to probe each cluster
+type clusterConfig struct {
+	Name     string
+	Provider string
+	Region   string
+	URL      string
+	Version  string
+}
+
+// getClusters returns cluster configurations from environment variables,
+// with sensible defaults for local development.
+func getClusters() []clusterConfig {
+	return []clusterConfig{
+		{
+			Name:     "portfolio-gke",
+			Provider: "GCP",
+			Region:   "europe-west1",
+			URL:      getEnv("CLUSTER_GCP_URL", "https://gcp.nawazishkhan.click"),
+			Version:  "v1.0.0",
+		},
+		{
+			Name:     "portfolio-azure",
+			Provider: "Azure",
+			Region:   "westeurope",
+			URL:      getEnv("CLUSTER_AZURE_URL", "https://azure.nawazishkhan.click"),
+			Version:  "v1.0.0",
+		},
+		{
+			Name:     "portfolio-aws",
+			Provider: "AWS",
+			Region:   "eu-east-1",
+			URL:      getEnv("CLUSTER_AWS_URL", "https://aws.nawazishkhan.click"),
+			Version:  "v1.0.0",
+		},
+	}
+}
+
+func getEnv(key, fallback string) string {
+	if value, exists := os.LookupEnv(key); exists {
+		return value
+	}
+	return fallback
+}
+
 func main() {
 	http.HandleFunc("/api/status", statusHandler)
 	http.HandleFunc("/api/metrics", metricsHandler)
-	http.Handle("/metrics", promhttp.Handler()) // standard Prometheus scrape endpoint
+	http.Handle("/metrics", promhttp.Handler())
 
 	port := ":8080"
 	log.Printf("Backend listening on %s\n", port)
@@ -47,33 +99,48 @@ func main() {
 }
 
 func statusHandler(w http.ResponseWriter, r *http.Request) {
-	// Dummy data – replace with real cluster health checks later
-	clusters := []CloudStatus{
-		{Name: "portfolio-azure", Provider: "Azure", Region: "westeurope", Online: true, LatencyMs: 12, Version: "v1.0.0"},
-		{Name: "portfolio-gcp", Provider: "GCP", Region: "europe-west1", Online: true, LatencyMs: 8, Version: "v1.0.0"},
-		{Name: "portfolio-aws", Provider: "AWS", Region: "eu-west-1", Online: true, LatencyMs: 15, Version: "v1.0.0"},
-	}
+	clusters := getClusters()
+	var results []CloudStatus
+	onlineCount := 0
 
-	// Update Prometheus metric for each cluster
-	for _, c := range clusters {
-		val := 0.0
-		if c.Online {
-			val = 1.0
-		}
-		clusterUp.WithLabelValues(c.Provider, c.Region).Set(val)
-	}
+	client := &http.Client{Timeout: 2 * time.Second}
 
-	online := 0
 	for _, c := range clusters {
-		if c.Online {
-			online++
+		start := time.Now()
+		resp, err := client.Get(c.URL)
+		latency := time.Since(start).Milliseconds()
+
+		online := false
+		if err == nil && resp.StatusCode >= 200 && resp.StatusCode < 400 {
+			online = true
+			onlineCount++
 		}
+		if resp != nil {
+			resp.Body.Close()
+		}
+
+		// Update Prometheus metrics
+		if online {
+			clusterUp.WithLabelValues(c.Provider, c.Region).Set(1)
+		} else {
+			clusterUp.WithLabelValues(c.Provider, c.Region).Set(0)
+		}
+		clusterLatency.WithLabelValues(c.Provider, c.Region).Set(float64(latency))
+
+		results = append(results, CloudStatus{
+			Name:      c.Name,
+			Provider:  c.Provider,
+			Region:    c.Region,
+			Online:    online,
+			LatencyMs: latency,
+			Version:   c.Version,
+		})
 	}
 
 	resp := map[string]interface{}{
-		"clusters":    clusters,
-		"totalOnline": online,
-		"totalCount":  len(clusters),
+		"clusters":    results,
+		"totalOnline": onlineCount,
+		"totalCount":  len(results),
 		"timestamp":   time.Now().Unix(),
 	}
 
