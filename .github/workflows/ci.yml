@@ -3,6 +3,9 @@ name: Build, Push & Update Helm Values
 on:
   push:
     branches: [main]
+    paths-ignore:
+     - README.md
+     - '**/*.md'
 
 env:
   DOCKER_USER: nawnwa
