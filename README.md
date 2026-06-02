@@ -262,8 +262,9 @@ Each deployment added or changed components as needed:
 ## Future Upgrades
 - [ ] **Oracle Cloud:** Permanent free VM replacement for Azure after 12 months
 - [ ] **CI for infra:** `terraform plan` on PR
-- [ ] **Website Features** (German + Dark Mode button), dedicated health status API
-- [ ] **Website Portfolio** — CV/Resume PDF upload
+- [ ] **Website Features:** German + Dark Mode button, dedicated health status API
+- [ ] **Website Portfolio:** CV/Resume PDF upload
+- [ ] **Security Hardening:** Check the deployments for security lapses
 
 ## Security Notes
 
