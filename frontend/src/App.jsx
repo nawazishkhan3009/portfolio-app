@@ -97,7 +97,7 @@ function App() {
                     {cluster.online ? 'Online' : 'Offline'}
                   </p>
                   <div className="cluster-meta">
-                    <span>{cluster.latencyMs} ms</span>
+                    <span>{cluster.online ? `${cluster.latencyMs} ms` : 'NA'}</span>
                     <span className="version">{cluster.version}</span>
                   </div>
                 </div>
