@@ -60,7 +60,7 @@ func getClusters() []clusterConfig {
 		{
 			Name:     "portfolio-gke",
 			Provider: "GCP",
-			Region:   "europe-west1",
+			Region:   "asia-southeast1",
 			URL:      getEnv("CLUSTER_GCP_URL", "https://gcp.nawazishkhan.click"),
 			Version:  "v1.0.0",
 		},
