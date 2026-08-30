@@ -55,6 +55,11 @@ jobs:
           yq e ".frontend.image.tag = \"${{ github.sha }}\"" -i values.yaml
           yq e ".backend.image.tag = \"${{ github.sha }}\"" -i values.yaml
 
+          # Auto-bump the patch version in Chart.yaml for FluxCD
+          OLD=$(yq e '.version' Chart.yaml)
+          NEW=$(echo $OLD | awk -F. '{print $1"."$2"."$3+1}')
+          yq e ".version = \"$NEW\"" -i Chart.yaml
+
           git config user.name "CI Bot"
           git config user.email "ci-bot@nawazishkhan.dev"
           git add values.yaml
