@@ -1,5 +1,18 @@
 version: '3.8'
 services:
+  # ── Local Ingress ( simulate ingress on cloud deployments)  ──
+  # ── Removing nginx routing/reverse proxy from Frontend pod  ──
+  # ── Nginx only serves webpage as a webserver now  ──
+  ingress:
+    image: nginx:alpine
+    container_name: local-ingress
+    ports:
+      - "80:80"
+    volumes:
+      - ./local-ingress.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - frontend
+      - backend
   frontend:
     build: ./frontend
     ports:

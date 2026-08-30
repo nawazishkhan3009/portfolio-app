@@ -2,11 +2,9 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"log"
 	"net/http"
 	"os"
-	"runtime"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -69,7 +67,7 @@ func getClusters() []clusterConfig {
 			Provider: "Azure",
 			Region:   "westeurope",
 			URL:      getEnv("CLUSTER_AZURE_URL", "https://azure.nawazishkhan.click"),
-			Version:  "v1.0.0",
+			Version:  "v1.0.1",
 		},
 		{
 			Name:     "portfolio-aws",
@@ -90,7 +88,7 @@ func getEnv(key, fallback string) string {
 
 func main() {
 	http.HandleFunc("/api/status", statusHandler)
-	http.HandleFunc("/api/metrics", metricsHandler)
+
 	http.Handle("/metrics", promhttp.Handler())
 
 	port := ":8080"
@@ -146,15 +144,4 @@ func statusHandler(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(resp)
-}
-
-func metricsHandler(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "text/plain; version=0.0.4")
-	uptime := time.Since(startTime).Seconds()
-	fmt.Fprintf(w, "# HELP portfolio_backend_uptime_seconds Backend uptime in seconds\n")
-	fmt.Fprintf(w, "# TYPE portfolio_backend_uptime_seconds gauge\n")
-	fmt.Fprintf(w, "portfolio_backend_uptime_seconds %f\n", uptime)
-	fmt.Fprintf(w, "# HELP portfolio_backend_go_goroutines Number of goroutines\n")
-	fmt.Fprintf(w, "# TYPE portfolio_backend_go_goroutines gauge\n")
-	fmt.Fprintf(w, "portfolio_backend_go_goroutines %d\n", runtime.NumGoroutine())
 }
