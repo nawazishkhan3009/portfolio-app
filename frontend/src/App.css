@@ -918,3 +918,42 @@ button:focus-visible {
   outline: 2px solid #3b82f6;
   outline-offset: 2px;
 }
+
+/* Location warning in About section */
+.location-warning {
+  margin-top: 16px;
+  padding: 12px 16px;
+  background: rgba(245, 158, 11, 0.1);
+  border: 1px solid rgba(245, 158, 11, 0.2);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #fbbf24;
+  font-size: 0.9rem;
+}
+
+.warning-icon {
+  font-size: 1.1rem;
+}
+
+.warning-text {
+  color: #fbbf24;
+}
+
+/* Tooltip footer for location warning */
+.tooltip-footer {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid #2d2d44;
+  font-size: 0.7rem;
+  color: #64748b;
+  text-align: center;
+  font-style: italic;
+}
+
+/* When location not found - show NA for distance in a special way */
+.distance-na {
+  color: #64748b;
+  font-weight: 400;
+}

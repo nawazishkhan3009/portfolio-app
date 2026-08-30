@@ -26,19 +26,19 @@ const CLUSTER_INFO = {
   'asia-southeast1': { 
     lat: 1.3521, 
     lng: 103.8198, 
-    display: 'Singapore',  // Short name for display
+    display: 'Singapore',
     emoji: '🌏' 
   },
   'westeurope': { 
     lat: 52.3702, 
     lng: 4.8952, 
-    display: 'Netherlands',  // Short name for display
+    display: 'Netherlands',
     emoji: '🌍' 
   },
   'eu-east-1': { 
     lat: 38.9072, 
     lng: -77.0369, 
-    display: 'Virginia',  // Short name for display
+    display: 'Virginia',
     emoji: '🌎' 
   },
 }
@@ -65,27 +65,89 @@ function App() {
   const [userInfo, setUserInfo] = useState({
     location: 'Detecting...',
     lat: 0,
-    lng: 0
+    lng: 0,
+    found: false
   })
 
-  // Get user location with coordinates
+  // Detect location with multiple API fallbacks - NO REFERER
   useEffect(() => {
-    fetch('http://ip-api.com/json/')
-      .then(res => res.json())
-      .then(data => {
-        if (data.status === 'success') {
-          setUserInfo({
-            location: `${data.city}, ${data.country}`,
-            lat: data.lat,
-            lng: data.lon
+    const detectLocation = async () => {
+      // Define APIs to try in order
+      const apis = [
+        {
+          url: 'https://ipapi.co/json/',
+          parse: (data) => ({
+            location: data.city && data.country_name ? `${data.city}, ${data.country_name}` : null,
+            lat: data.latitude || 0,
+            lng: data.longitude || 0,
+            success: !!(data.city && data.country_name && data.latitude && data.longitude)
           })
-        } else {
-          setUserInfo({ location: 'Unknown Location', lat: 0, lng: 0 })
+        },
+        {
+          url: 'https://ip-api.com/json/',
+          parse: (data) => ({
+            location: data.status === 'success' ? `${data.city}, ${data.country}` : null,
+            lat: data.status === 'success' ? data.lat : 0,
+            lng: data.status === 'success' ? data.lon : 0,
+            success: data.status === 'success'
+          })
+        },
+        {
+          url: 'https://geolocation-db.com/json/',
+          parse: (data) => ({
+            location: data.city && data.country_name ? `${data.city}, ${data.country_name}` : null,
+            lat: data.latitude || 0,
+            lng: data.longitude || 0,
+            success: !!(data.city && data.country_name)
+          })
         }
+      ]
+
+      // Try each API in order - with NO REFERER
+      for (const api of apis) {
+        try {
+          const controller = new AbortController()
+          const timeoutId = setTimeout(() => controller.abort(), 5000)
+          
+          const response = await fetch(api.url, { 
+            signal: controller.signal,
+            referrerPolicy: 'no-referrer',  // Remove referer header
+            headers: {
+              'Referer': ''  // Explicitly set empty referer
+            }
+          })
+          clearTimeout(timeoutId)
+          
+          const data = await response.json()
+          const result = api.parse(data)
+          
+          if (result.success && result.location) {
+            setUserInfo({
+              location: result.location,
+              lat: result.lat,
+              lng: result.lng,
+              found: true
+            })
+            console.log('✅ Location found:', result.location)
+            return // Success - exit the function
+          }
+        } catch (error) {
+          console.warn(`❌ Failed to get location from ${api.url}:`, error.message)
+          // Continue to next API
+        }
+      }
+
+      // If all APIs fail
+      console.warn('⚠️ All location APIs failed')
+      setUserInfo({
+        location: 'CouldNotFind',
+        lat: 0,
+        lng: 0,
+        found: false
       })
-      .catch(() => {
-        setUserInfo({ location: 'Unknown Location', lat: 0, lng: 0 })
-      })
+    }
+
+    detectLocation()
   }, [])
 
   // Measure latency from user's browser
@@ -146,12 +208,20 @@ function App() {
   }
 
   const formatDistance = (distance) => {
-    if (!distance) return 'Unknown'
+    if (!distance) return 'NA'
     if (distance < 1000) {
       return `${Math.round(distance)} km`
     } else {
       return `${(distance / 1000).toFixed(1)}k km`
     }
+  }
+
+  // Get display location (show "CouldNotFind" if not found)
+  const getDisplayLocation = () => {
+    if (!userInfo.found) {
+      return 'CouldNotFind'
+    }
+    return userInfo.location
   }
 
   return (
@@ -183,7 +253,7 @@ function App() {
         <h3 className="section-heading">
           Live Cluster Status
           <span className="user-location-badge">
-            📍 {userInfo.location}
+            📍 {getDisplayLocation()}
           </span>
         </h3>
         <div className="status-summary">
@@ -196,9 +266,9 @@ function App() {
             const provider = cluster.provider || 'Azure'
             const clusterInfo = getClusterInfo(cluster.region)
             
-            // Calculate distance from user to cluster
+            // Calculate distance from user to cluster (only if location found)
             let distance = null
-            if (userInfo.lat && userInfo.lng && clusterInfo.lat && clusterInfo.lng) {
+            if (userInfo.found && userInfo.lat && userInfo.lng && clusterInfo.lat && clusterInfo.lng) {
               distance = getDistance(
                 userInfo.lat, 
                 userInfo.lng, 
@@ -246,7 +316,7 @@ function App() {
                               <div className="tooltip-body">
                                 <div className="tooltip-row">
                                   <span className="tooltip-label">📍 You:</span>
-                                  <span className="tooltip-value">{userInfo.location}</span>
+                                  <span className="tooltip-value">{getDisplayLocation()}</span>
                                 </div>
                                 <div className="tooltip-row">
                                   <span className="tooltip-label">☁️ Cluster:</span>
@@ -263,6 +333,11 @@ function App() {
                                     {cluster.latencyMs} ms
                                   </span>
                                 </div>
+                                {!userInfo.found && (
+                                  <div className="tooltip-footer" style={{ color: '#f59e0b' }}>
+                                    ⚠️ Location not detected - distance unavailable
+                                  </div>
+                                )}
                               </div>
                             </div>
                           </span>
@@ -291,6 +366,14 @@ function App() {
           managed entirely through Argo CD and Terraform. Every commit rolls out across
           AWS, Azure, and GCP without manual intervention.
         </p>
+        {!userInfo.found && (
+          <div className="location-warning">
+            <span className="warning-icon">⚠️</span>
+            <span className="warning-text">
+              Location detection failed. Distance information is unavailable.
+            </span>
+          </div>
+        )}
       </section>
 
       <section id="stack" className="stack-section">
