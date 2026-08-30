@@ -1,0 +1,13 @@
+server:
+  service:
+    type: NodePort
+  ingress:
+    enabled: true
+    className: nginx
+    hosts:
+      - argocd.local
+  extraArgs:
+    - --insecure
+  config:
+    # Disable TLS for simplicity
+    url: http://argocd.local
