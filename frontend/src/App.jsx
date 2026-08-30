@@ -21,24 +21,70 @@ const CLUSTER_URLS = {
   AWS: 'https://aws.nawazishkhan.click',
 }
 
+// Cluster information with short display names
+const CLUSTER_INFO = {
+  'asia-southeast1': { 
+    lat: 1.3521, 
+    lng: 103.8198, 
+    display: 'Singapore',  // Short name for display
+    emoji: '🌏' 
+  },
+  'westeurope': { 
+    lat: 52.3702, 
+    lng: 4.8952, 
+    display: 'Netherlands',  // Short name for display
+    emoji: '🌍' 
+  },
+  'eu-east-1': { 
+    lat: 38.9072, 
+    lng: -77.0369, 
+    display: 'Virginia',  // Short name for display
+    emoji: '🌎' 
+  },
+}
+
+// Haversine formula for distance calculation
+function getDistance(lat1, lon1, lat2, lon2) {
+  const R = 6371
+  const dLat = (lat2 - lat1) * Math.PI / 180
+  const dLon = (lon2 - lon1) * Math.PI / 180
+  const a = 
+    Math.sin(dLat/2) * Math.sin(dLat/2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLon/2) * Math.sin(dLon/2)
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a))
+  return R * c
+}
+
 function App() {
   const [status, setStatus] = useState({
     clusters: [],
     totalOnline: 0,
     totalCount: 0,
   })
-  const [userLocation, setUserLocation] = useState('Unknown Location')
+  const [userInfo, setUserInfo] = useState({
+    location: 'Detecting...',
+    lat: 0,
+    lng: 0
+  })
 
-  // Detect user's approximate location
+  // Get user location with coordinates
   useEffect(() => {
-    fetch('https://ipapi.co/json/')
+    fetch('http://ip-api.com/json/')
       .then(res => res.json())
       .then(data => {
-        const location = `${data.city}, ${data.country_name}`
-        setUserLocation(location)
+        if (data.status === 'success') {
+          setUserInfo({
+            location: `${data.city}, ${data.country}`,
+            lat: data.lat,
+            lng: data.lon
+          })
+        } else {
+          setUserInfo({ location: 'Unknown Location', lat: 0, lng: 0 })
+        }
       })
       .catch(() => {
-        setUserLocation('Unknown Location')
+        setUserInfo({ location: 'Unknown Location', lat: 0, lng: 0 })
       })
   }, [])
 
@@ -60,11 +106,9 @@ function App() {
 
   const fetchStatus = async () => {
     try {
-      // Get cluster health from backend
       const response = await fetch('/api/status')
       const data = await response.json()
       
-      // Measure latency from client for each cluster
       const clustersWithLatency = await Promise.all(
         data.clusters.map(async (cluster) => {
           const url = CLUSTER_URLS[cluster.provider]
@@ -96,22 +140,18 @@ function App() {
     return () => clearInterval(interval)
   }, [])
 
-  // Helper function to get emoji for location
-  const getLocationEmoji = (region) => {
-    if (region.includes('asia')) return '🌏'
-    if (region.includes('europe')) return '🌍'
-    if (region.includes('us') || region.includes('america')) return '🌎'
-    return '🌐'
+  // Helper functions
+  const getClusterInfo = (region) => {
+    return CLUSTER_INFO[region] || { display: region, emoji: '🌐', lat: 0, lng: 0 }
   }
 
-  // Helper function to get distance indicator
-  const getDistanceIndicator = (region) => {
-    const distances = {
-      'asia-southeast1': '~5,000 km',
-      'westeurope': '~6,500 km',
-      'eu-east-1': '~12,000 km',
+  const formatDistance = (distance) => {
+    if (!distance) return 'Unknown'
+    if (distance < 1000) {
+      return `${Math.round(distance)} km`
+    } else {
+      return `${(distance / 1000).toFixed(1)}k km`
     }
-    return distances[region] || '~8,000 km'
   }
 
   return (
@@ -143,7 +183,7 @@ function App() {
         <h3 className="section-heading">
           Live Cluster Status
           <span className="user-location-badge">
-            📍 {userLocation}
+            📍 {userInfo.location}
           </span>
         </h3>
         <div className="status-summary">
@@ -154,8 +194,18 @@ function App() {
         <div className="cluster-grid">
           {status.clusters.map(cluster => {
             const provider = cluster.provider || 'Azure'
-            const locationEmoji = getLocationEmoji(cluster.region)
-            const distance = getDistanceIndicator(cluster.region)
+            const clusterInfo = getClusterInfo(cluster.region)
+            
+            // Calculate distance from user to cluster
+            let distance = null
+            if (userInfo.lat && userInfo.lng && clusterInfo.lat && clusterInfo.lng) {
+              distance = getDistance(
+                userInfo.lat, 
+                userInfo.lng, 
+                clusterInfo.lat, 
+                clusterInfo.lng
+              )
+            }
             
             return (
               <div
@@ -176,7 +226,7 @@ function App() {
                     {provider}
                   </h4>
                   <p className="region">
-                    {locationEmoji} {cluster.region}
+                    {clusterInfo.emoji} {clusterInfo.display}
                   </p>
                   <p className="status-text">
                     <span className={`dot ${cluster.online ? 'green' : 'red'}`}></span>
@@ -191,30 +241,27 @@ function App() {
                           <span className="latency-tooltip-text">
                             <div className="tooltip-content">
                               <div className="tooltip-header">
-                                <span>⚡ Latency Measurement</span>
+                                <span>⚡ Latency from your browser</span>
                               </div>
                               <div className="tooltip-body">
                                 <div className="tooltip-row">
-                                  <span className="tooltip-label">📍 Your Location:</span>
-                                  <span className="tooltip-value">{userLocation}</span>
+                                  <span className="tooltip-label">📍 You:</span>
+                                  <span className="tooltip-value">{userInfo.location}</span>
                                 </div>
                                 <div className="tooltip-row">
-                                  <span className="tooltip-label">☁️ Cluster Location:</span>
-                                  <span className="tooltip-value">{locationEmoji} {cluster.region}</span>
+                                  <span className="tooltip-label">☁️ Cluster:</span>
+                                  <span className="tooltip-value">{clusterInfo.emoji} {clusterInfo.display}</span>
                                 </div>
                                 <div className="tooltip-row">
-                                  <span className="tooltip-label">📏 Approx. Distance:</span>
-                                  <span className="tooltip-value">{distance}</span>
+                                  <span className="tooltip-label">📏 Distance:</span>
+                                  <span className="tooltip-value">{formatDistance(distance)}</span>
                                 </div>
                                 <div className="tooltip-divider"></div>
                                 <div className="tooltip-row highlight">
-                                  <span className="tooltip-label">⏱️ Round-trip Time:</span>
+                                  <span className="tooltip-label">⏱️ Round-trip:</span>
                                   <span className="tooltip-value" style={{ color: '#60a5fa', fontWeight: 'bold' }}>
                                     {cluster.latencyMs} ms
                                   </span>
-                                </div>
-                                <div className="tooltip-footer">
-                                  <span>🌐 Real-time measurement from your browser</span>
                                 </div>
                               </div>
                             </div>
@@ -255,15 +302,15 @@ function App() {
           </div>
           <div className="stack-card">
             <h4>⚙️ IaC & Containers</h4>
-            <ul><li>Terraform</li><li>K8s and K3s</li><li>Helm</li><li>Docker</li><li>Minikube</li></ul>
+            <ul><li>Terraform</li><li>Kubernetes</li><li>Helm</li><li>Docker</li></ul>
           </div>
           <div className="stack-card">
             <h4>🔄 CI/CD & GitOps</h4>
-            <ul><li>GitHub Actions</li><li>Argo CD</li><li>FluxCD</li></ul>
+            <ul><li>GitHub Actions</li><li>Argo CD</li></ul>
           </div>
           <div className="stack-card">
             <h4>📊 Observability</h4>
-            <ul><li>Prometheus</li><li>Grafana</li></ul>
+            <ul><li>Prometheus</li><li>Grafana</li><li>AlertManager</li></ul>
           </div>
         </div>
       </section>
