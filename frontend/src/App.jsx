@@ -14,14 +14,23 @@ const cloudColors = {
   AWS: '#FF9900',
 }
 
-// Cluster URLs for latency testing
+// Cluster URLs for latency testing - keyed by cluster name
 const CLUSTER_URLS = {
-  GCP: 'https://gcp.nawazishkhan.click',
-  Azure: 'https://azure.nawazishkhan.click',
-  AWS: 'https://aws.nawazishkhan.click',
+  'portfolio-gke': 'https://gcp.nawazishkhan.click',
+  'portfolio-azure': 'https://azure.nawazishkhan.click',
+  'portfolio-aks': 'https://aks.nawazishkhan.click',
+  'portfolio-aws': 'https://aws.nawazishkhan.click',
 }
 
-// Cluster information with short display names
+// Cluster display names - keyed by cluster name
+const CLUSTER_DISPLAY_NAMES = {
+  'portfolio-gke': 'GKE',
+  'portfolio-azure': 'Azure k3s',
+  'portfolio-aks': 'Azure AKS',
+  'portfolio-aws': 'EKS',
+}
+
+// Cluster information with short display names - keyed by region
 const CLUSTER_INFO = {
   'asia-southeast1': { 
     lat: 1.3521, 
@@ -72,7 +81,6 @@ function App() {
   // Detect location with multiple API fallbacks - NO REFERER
   useEffect(() => {
     const detectLocation = async () => {
-      // Define APIs to try in order
       const apis = [
         {
           url: 'https://ipapi.co/json/',
@@ -103,7 +111,6 @@ function App() {
         }
       ]
 
-      // Try each API in order - with NO REFERER
       for (const api of apis) {
         try {
           const controller = new AbortController()
@@ -111,9 +118,9 @@ function App() {
           
           const response = await fetch(api.url, { 
             signal: controller.signal,
-            referrerPolicy: 'no-referrer',  // Remove referer header
+            referrerPolicy: 'no-referrer',
             headers: {
-              'Referer': ''  // Explicitly set empty referer
+              'Referer': ''
             }
           })
           clearTimeout(timeoutId)
@@ -129,15 +136,13 @@ function App() {
               found: true
             })
             console.log('✅ Location found:', result.location)
-            return // Success - exit the function
+            return
           }
         } catch (error) {
           console.warn(`❌ Failed to get location from ${api.url}:`, error.message)
-          // Continue to next API
         }
       }
 
-      // If all APIs fail
       console.warn('⚠️ All location APIs failed')
       setUserInfo({
         location: 'CouldNotFind',
@@ -173,7 +178,8 @@ function App() {
       
       const clustersWithLatency = await Promise.all(
         data.clusters.map(async (cluster) => {
-          const url = CLUSTER_URLS[cluster.provider]
+          // Use cluster name to get the correct URL
+          const url = CLUSTER_URLS[cluster.name]
           const latency = await measureLatency(url)
           return {
             ...cluster,
@@ -216,12 +222,24 @@ function App() {
     }
   }
 
-  // Get display location (show "CouldNotFind" if not found)
   const getDisplayLocation = () => {
     if (!userInfo.found) {
       return 'CouldNotFind'
     }
     return userInfo.location
+  }
+
+  // Get display name for cluster based on unique name
+  const getClusterDisplayName = (clusterName) => {
+    return CLUSTER_DISPLAY_NAMES[clusterName] || clusterName
+  }
+
+  // Get provider from cluster name
+  const getProviderFromName = (clusterName) => {
+    if (clusterName.includes('gke')) return 'GCP'
+    if (clusterName.includes('azure') || clusterName.includes('aks')) return 'Azure'
+    if (clusterName.includes('aws')) return 'AWS'
+    return 'Azure' // Default
   }
 
   return (
@@ -263,10 +281,11 @@ function App() {
         </div>
         <div className="cluster-grid">
           {status.clusters.map(cluster => {
-            const provider = cluster.provider || 'Azure'
+            const displayName = getClusterDisplayName(cluster.name)
+            const provider = getProviderFromName(cluster.name)
             const clusterInfo = getClusterInfo(cluster.region)
             
-            // Calculate distance from user to cluster (only if location found)
+            // Calculate distance from user to cluster
             let distance = null
             if (userInfo.found && userInfo.lat && userInfo.lng && clusterInfo.lat && clusterInfo.lng) {
               distance = getDistance(
@@ -293,7 +312,7 @@ function App() {
                 </div>
                 <div className="cluster-info">
                   <h4 style={{ color: cloudColors[provider] || '#fff' }}>
-                    {provider}
+                    {displayName}
                   </h4>
                   <p className="region">
                     {clusterInfo.emoji} {clusterInfo.display}
@@ -364,7 +383,7 @@ function App() {
           I'm a Cloud & Platform Engineer with a passion for automation, observability, and
           GitOps. This site itself is a live demo of a multi‑cloud Kubernetes deployment
           managed entirely through Argo CD and Terraform. Every commit rolls out across
-          AWS, Azure, and GCP without manual intervention.
+          AWS (EKS), Azure (k3s), Azure (AKS), and Google Cloud (GKE).
         </p>
         {!userInfo.found && (
           <div className="location-warning">
@@ -403,7 +422,7 @@ function App() {
         <div className="project-card">
           <h4>Multi‑Cloud Portfolio Deployment</h4>
           <p>
-            This website is deployed simultaneously on AWS (EKS), Azure (AKS), and Google Cloud (GKE).
+            This website is deployed simultaneously on AWS (EKS), Azure (k3s), Azure (AKS), and Google Cloud (GKE).
             Infrastructure provisioned with Terraform. CI/CD via GitHub Actions and Argo CD.
             Real‑time metrics streamed to Prometheus and Grafana.
           </p>

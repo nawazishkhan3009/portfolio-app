@@ -12,25 +12,23 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
-// Prometheus metrics
 var (
 	clusterUp = promauto.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Name: "cluster_up",
-			Help: "Whether a cloud cluster is reachable from backend (1 = up, 0 = down).",
+			Help: "Whether a cloud cluster is reachable (1 = up, 0 = down).",
 		},
 		[]string{"provider", "region"},
 	)
 )
 
-// CloudStatus represents a single cluster's health
 type CloudStatus struct {
 	Name     string `json:"name"`
 	Provider string `json:"provider"`
 	Region   string `json:"region"`
 	Online   bool   `json:"online"`
 	Version  string `json:"version"`
-	// No LatencyMs here - frontend will measure it
+	// No LatencyMs - frontend measures it
 }
 
 type clusterConfig struct {
@@ -42,26 +40,39 @@ type clusterConfig struct {
 }
 
 func getClusters() []clusterConfig {
+	// Get environment variables for URLs with defaults
+	gcpURL := getEnv("CLUSTER_GCP_URL", "https://gcp.nawazishkhan.click")
+	azureURL := getEnv("CLUSTER_AZURE_URL", "https://azure.nawazishkhan.click")
+	aksURL := getEnv("CLUSTER_AKS_URL", "https://aks.nawazishkhan.click")
+	awsURL := getEnv("CLUSTER_AWS_URL", "https://aws.nawazishkhan.click")
+
 	return []clusterConfig{
 		{
 			Name:     "portfolio-gke",
 			Provider: "GCP",
 			Region:   "asia-southeast1",
-			URL:      getEnv("CLUSTER_GCP_URL", "https://gcp.nawazishkhan.click"),
+			URL:      gcpURL,
 			Version:  "v1.0.0",
 		},
 		{
 			Name:     "portfolio-azure",
 			Provider: "Azure",
 			Region:   "westeurope",
-			URL:      getEnv("CLUSTER_AZURE_URL", "https://azure.nawazishkhan.click"),
+			URL:      azureURL,
 			Version:  "v1.0.1",
+		},
+		{
+			Name:     "portfolio-aks",
+			Provider: "Azure",
+			Region:   "westeurope",
+			URL:      aksURL,
+			Version:  "v0.0.0",
 		},
 		{
 			Name:     "portfolio-aws",
 			Provider: "AWS",
 			Region:   "eu-east-1",
-			URL:      getEnv("CLUSTER_AWS_URL", "https://aws.nawazishkhan.click"),
+			URL:      awsURL,
 			Version:  "v1.0.0",
 		},
 	}
