@@ -408,11 +408,11 @@ function App() {
           </div>
           <div className="stack-card">
             <h4>🔄 CI/CD & GitOps</h4>
-            <ul><li>GitHub Actions</li><li>Argo CD</li></ul>
+            <ul><li>GitHub Actions</li><li>Argo CD</li><li>Flux CD</li></ul>
           </div>
           <div className="stack-card">
             <h4>📊 Observability</h4>
-            <ul><li>Prometheus</li><li>Grafana</li><li>AlertManager</li></ul>
+            <ul><li>Prometheus</li><li>Grafana</li></ul>
           </div>
         </div>
       </section>
