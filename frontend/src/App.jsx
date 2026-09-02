@@ -1,13 +1,12 @@
 import { useState, useEffect, useRef } from 'react'
 import './App.css'
+import { useLanguage } from './components/LanguageContext'
 import config from './config'
 
 const cloudLogos = {
-  // Cloud provider logos
   Azure: 'https://www.vectorlogo.zone/logos/microsoft_azure/microsoft_azure-icon.svg',
   GCP: 'https://www.vectorlogo.zone/logos/google_cloud/google_cloud-icon.svg',
   AWS: 'https://www.vectorlogo.zone/logos/amazon_aws/amazon_aws-icon.svg',
-  // Brand icons for contact section
   GitHub: 'https://www.vectorlogo.zone/logos/github/github-icon.svg',
   LinkedIn: 'https://www.vectorlogo.zone/logos/linkedin/linkedin-icon.svg',
   Xing: 'https://www.vectorlogo.zone/logos/xing/xing-icon.svg',
@@ -19,10 +18,11 @@ const cloudColors = {
   AWS: '#FF9900',
 }
 
-// CONFIGURATION - Easily modify the update interval (in seconds)
-const UPDATE_INTERVAL_SECONDS = 10 // Change this to adjust refresh rate
+const UPDATE_INTERVAL_SECONDS = 10
 
 function App() {
+  const { language, setLanguage } = useLanguage()
+  
   const [status, setStatus] = useState({
     clusters: [],
     totalOnline: 0,
@@ -31,14 +31,175 @@ function App() {
   })
   const [isLoading, setIsLoading] = useState(true)
   const [countdown, setCountdown] = useState(UPDATE_INTERVAL_SECONDS)
-  
-  // Use ref to track if we're currently fetching
   const isFetchingRef = useRef(false)
 
-  // Measure latency from browser to a cluster URL
+  // Function to check if a PDF file exists - improved version
+  const checkPdfExists = async (filePath) => {
+    try {
+      const response = await fetch(filePath, { method: 'HEAD' })
+      // Check the content-type to ensure it's actually a PDF
+      const contentType = response.headers.get('content-type')
+      return response.ok && contentType && contentType.includes('application/pdf')
+    } catch {
+      return false
+    }
+  }
+
+  // State to track which PDFs exist
+  const [pdfExists, setPdfExists] = useState({
+    azureAdmin: false,
+    azureDevops: false,
+    awsSa: false,
+    telcC1: false
+  })
+
+  // Check which PDFs exist on mount
+  useEffect(() => {
+    const checkAllPdfs = async () => {
+      const [azureAdmin, azureDevops, awsSa, telcC1] = await Promise.all([
+        checkPdfExists('/certs/azure-admin.pdf'),
+        checkPdfExists('/certs/azure-devops.pdf'),
+        checkPdfExists('/certs/aws-sa.pdf'),
+        checkPdfExists('/certs/telc-c1.pdf')
+      ])
+      setPdfExists({ azureAdmin, azureDevops, awsSa, telcC1 })
+    }
+    checkAllPdfs()
+  }, [])
+
+  // Translations
+  const t = {
+    en: {
+      nav: ['About', 'Certifications', 'Project', 'Stack', 'Contact'],
+      hero: {
+        title: 'Nawazish Khan',
+        subtitle: 'Cloud & DevOps Engineer',
+        description: 'Automating infrastructure, optimizing deployments, and building scalable cloud solutions across AWS, Azure, and GCP.',
+        projectBtn: 'View Project',
+        contactBtn: 'Contact Me',
+        resumeBtn: '📄 View Resume'
+      },
+      status: {
+        title: 'Live Cluster Status',
+        online: 'clusters online',
+        updating: 'Updating in',
+        connecting: 'Connecting...',
+        loading: 'Loading...'
+      },
+      about: {
+        title: 'About Me',
+        text1: "I'm a Cloud & Platform Engineer with a passion for automation and observability. I specialize in building Kubernetes clusters, implementing GitOps workflows, and designing multi-cloud architectures — treating infrastructure as code with the same rigor as application code.",
+        language: '🇩🇪 Fluent in English and German (C1 level) — I thrive in international, collaborative environments.'
+      },
+      certifications: {
+        title: 'Certifications & Languages',
+        microsoft: '🏅 Microsoft Certified',
+        azure: 'Azure Administrator – Associate',
+        azureFile: '/certs/azure-admin.pdf',
+        azureDate: '08.2026 – 08.2027',
+        devops: 'DevOps Engineer – Expert',
+        devopsFile: '/certs/azure-devops.pdf',
+        devopsDate: '09.2026 – 09.2027',
+        aws: '☁️ AWS Certified',
+        awsCert: 'Solutions Architect – Associate',
+        awsFile: '/certs/aws-sa.pdf',
+        awsDate: '03.2026 – 03.2029',
+        german: '🇩🇪 German Language',
+        telc: 'telc C1 German – General',
+        telcFile: '/certs/telc-c1.pdf',
+        telcDate: '08.2026',
+        note: 'Continuously improving through conversational courses and visiting Sprachtandems.',
+        show: 'Show'
+      },
+      project: {
+        title: 'Featured Project',
+        name: 'Multi‑Cloud Portfolio Deployment',
+        description: 'A production-grade portfolio deployed across AWS EKS, Azure k3s, Azure AKS, and GCP GKE. Infrastructure provisioned with Terraform, CI/CD via GitHub Actions, and GitOps managed through Argo CD and Flux CD.',
+        tags: ['Kubernetes', 'Terraform', 'Argo CD', 'GitOps'],
+        status: 'Live'
+      },
+      stack: {
+        title: 'Tech Stack',
+        cloud: 'Cloud',
+        iaac: 'IaC & Containers',
+        cicd: 'CI/CD & GitOps',
+        observability: 'Observability'
+      },
+      contact: {
+        title: "Let's Connect",
+        text: 'Open to Cloud, DevOps, SRE, and Platform Engineering opportunities.'
+      },
+      footer: '© 2026 Nawazish Khan · Built with React · Deployed via GitOps'
+    },
+    de: {
+      nav: ['Über mich', 'Zertifikate', 'Projekt', 'Tech-Stack', 'Kontakt'],
+      hero: {
+        title: 'Nawazish Khan',
+        subtitle: 'Cloud & DevOps Engineer',
+        description: 'Automatisierung von Infrastruktur, Optimierung von Deployments und Aufbau skalierbarer Cloud-Lösungen auf AWS, Azure und GCP.',
+        projectBtn: 'Projekt ansehen',
+        contactBtn: 'Kontakt',
+        resumeBtn: '📄 Lebenslauf anzeigen'
+      },
+      status: {
+        title: 'Live-Cluster-Status',
+        online: 'Cluster online',
+        updating: 'Aktualisierung in',
+        connecting: 'Verbinde...',
+        loading: 'Lade...'
+      },
+      about: {
+        title: 'Über mich',
+        text1: 'Ich bin Cloud- & Platform-Engineer mit einer Leidenschaft für Automatisierung und Observability. Ich spezialisiere mich auf den Aufbau von Kubernetes-Clustern, die Implementierung von GitOps-Workflows und die Gestaltung von Multi-Cloud-Architekturen — Infrastructure as Code mit derselben Sorgfalt wie Anwendungscode.',
+        text2: 'Dieses Portfolio ist eine Live-Demonstration dieser Prinzipien, bereitgestellt über vier Cloud-Provider mit Terraform, Argo CD und Flux CD.',
+        language: '🇩🇪 Fließend in Englisch und Deutsch (C1-Niveau) — ich arbeite gerne in internationalen, kollaborativen Umgebungen.'
+      },
+      certifications: {
+        title: 'Zertifizierungen & Sprachen',
+        microsoft: '🏅 Microsoft-zertifiziert',
+        azure: 'Azure Administrator – Associate',
+        azureFile: '/certs/azure-admin.pdf',
+        azureDate: '08.2026 – 08.2027',
+        devops: 'DevOps Engineer – Expert',
+        devopsFile: '/certs/azure-devops.pdf',
+        devopsDate: '09.2026 – 09.2027',
+        aws: '☁️ AWS-zertifiziert',
+        awsCert: 'Solutions Architect – Associate',
+        awsFile: '/certs/aws-sa.pdf',
+        awsDate: '03.2026 – 03.2029',
+        german: '🇩🇪 Deutschkenntnisse',
+        telc: 'telc Deutsch C1 – Allgemein',
+        telcFile: '/certs/telc-c1.pdf',
+        telcDate: '08.2026',
+        note: 'Kontinuierliche Verbesserung durch Konversationskurse und Sprachtandems.',
+        show: 'Anzeigen'
+      },
+      project: {
+        title: 'Ausgezeichnetes Projekt',
+        name: 'Multi-Cloud-Portfolio-Bereitstellung',
+        description: 'Ein produktionsreifes Portfolio, bereitgestellt auf AWS EKS, Azure k3s, Azure AKS und GCP GKE. Infrastruktur mit Terraform bereitgestellt, CI/CD über GitHub Actions und GitOps gesteuert durch Argo CD und Flux CD.',
+        tags: ['Kubernetes', 'Terraform', 'Argo CD', 'GitOps'],
+        status: 'Live'
+      },
+      stack: {
+        title: 'Tech-Stack',
+        cloud: 'Cloud',
+        iaac: 'IaC & Container',
+        cicd: 'CI/CD & GitOps',
+        observability: 'Observability'
+      },
+      contact: {
+        title: 'Kontakt',
+        text: 'Offen für Cloud-, DevOps-, SRE- und Platform-Engineering-Möglichkeiten.'
+      },
+      footer: '© 2026 Nawazish Khan · Entwickelt mit React · Bereitgestellt via GitOps'
+    }
+  }
+
+  const lang = language === 'en' ? t.en : t.de
+
   const measureLatency = async (url) => {
     if (!url) return -1
-    
     const start = performance.now()
     try {
       await fetch(`${url}?t=${Date.now()}`, {
@@ -46,40 +207,25 @@ function App() {
         mode: 'no-cors',
         cache: 'no-cache',
       })
-      const end = performance.now()
-      return Math.round(end - start)
-    } catch (error) {
+      return Math.round(performance.now() - start)
+    } catch {
       return -1
     }
   }
 
   const fetchStatus = async () => {
-    // Prevent multiple simultaneous fetches
     if (isFetchingRef.current) return
     isFetchingRef.current = true
-    
     setIsLoading(true)
     try {
-      // Get ALL cluster data from backend (single source of truth)
       const response = await fetch('/api/status')
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
-      }
-      
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`)
       const data = await response.json()
       
-      // Measure latency from browser to each cluster
       const clustersWithLatency = await Promise.all(
         data.clusters.map(async (cluster) => {
-          let latency = -1
-          if (cluster.online) {
-            latency = await measureLatency(cluster.url)
-          }
-          return {
-            ...cluster,
-            latencyMs: latency
-          }
+          const latency = cluster.online ? await measureLatency(cluster.url) : -1
+          return { ...cluster, latencyMs: latency }
         })
       )
       
@@ -95,41 +241,26 @@ function App() {
     } finally {
       setIsLoading(false)
       isFetchingRef.current = false
-      // Reset countdown to full interval after fetch completes
       setCountdown(UPDATE_INTERVAL_SECONDS)
     }
   }
 
-  // Fetch status on mount
   useEffect(() => {
     fetchStatus()
   }, [])
 
-  // Set up the interval for periodic fetching
   useEffect(() => {
-    const interval = setInterval(() => {
-      fetchStatus()
-    }, UPDATE_INTERVAL_SECONDS * 1000)
-    
+    const interval = setInterval(fetchStatus, UPDATE_INTERVAL_SECONDS * 1000)
     return () => clearInterval(interval)
   }, [])
 
-  // Countdown timer - runs independently
   useEffect(() => {
     const timer = setInterval(() => {
-      setCountdown((prev) => {
-        // Only decrement if we're not loading and countdown > 0
-        if (!isLoading && prev > 0) {
-          return prev - 1
-        }
-        return prev
-      })
+      setCountdown((prev) => (!isLoading && prev > 0) ? prev - 1 : prev)
     }, 1000)
-    
     return () => clearInterval(timer)
   }, [isLoading])
 
-  // Helper functions
   const getProviderFromName = (clusterName) => {
     if (clusterName.includes('gke')) return 'GCP'
     if (clusterName.includes('azure') || clusterName.includes('aks')) return 'Azure'
@@ -139,86 +270,95 @@ function App() {
 
   const formatDistance = (distance) => {
     if (!distance || distance <= 0) return 'NA'
-    if (distance < 1000) {
-      return `${Math.round(distance)} km`
-    } else {
-      return `${(distance / 1000).toFixed(1)}k km`
-    }
+    return distance < 1000 ? `${Math.round(distance)} km` : `${(distance / 1000).toFixed(1)}k km`
   }
 
   return (
     <div className="app">
       <nav className="navbar">
-        <div className="nav-brand">NK.DEV</div>
+        <div className="nav-brand">Cloud | DevOps | Platform </div>
         <div className="nav-links">
-          <a href="#about">About</a>
-          <a href="#project">Project</a>
-          <a href="#stack">Stack</a>
-          <a href="#contact">Contact</a>
+          <a href="#about">{lang.nav[0]}</a>
+          <a href="#certifications">{lang.nav[1]}</a>
+          <a href="#project">{lang.nav[2]}</a>
+          <a href="#stack">{lang.nav[3]}</a>
+          <a href="#contact">{lang.nav[4]}</a>
+          <button 
+            onClick={() => setLanguage(language === 'en' ? 'de' : 'en')} 
+            className="lang-switcher"
+          >
+            {language === 'en' ? '🇩🇪 DE' : '🇬🇧 EN'}
+          </button>
         </div>
       </nav>
 
       <section className="hero">
-        <h1>Nawazish Khan</h1>
-        <h2>Cloud & DevOps Engineer</h2>
-        <p className="hero-description">
-          I design and deploy resilient, observable, multi‑cloud infrastructure.
-          GitOps practitioner. Kubernetes native. Terraform first.
-        </p>
-        <div className="hero-buttons">
-          <a href="#project" className="btn-primary">View Project</a>
-          <a href="#contact" className="btn-secondary">Contact Me</a>
+        <div className="hero-content">
+          <div className="hero-text">
+            <h1>{lang.hero.title}</h1>
+            <p className="hero-description">{lang.hero.description}</p>
+            <div className="hero-stats">
+              <div className="stat-item">
+                <span className="stat-number">3</span>
+                <span className="stat-label">Cloud Providers</span>
+              </div>
+              <div className="stat-item">
+                <span className="stat-number">99.9%</span>
+                <span className="stat-label">Uptime Maintained</span>
+              </div>
+              <div className="stat-item">
+                <span className="stat-number">4+</span>
+                <span className="stat-label">Certifications</span>
+              </div>
+            </div>
+            <div className="hero-buttons">
+              <a href="#project" className="btn-primary">{lang.hero.projectBtn}</a>
+              <a href="#contact" className="btn-secondary">{lang.hero.contactBtn}</a>
+              <a href={language === 'en' ? '/myResume.pdf' : '/myLebenslauf.pdf'} target="_blank" rel="noopener noreferrer" className="btn-tertiary">
+                {lang.hero.resumeBtn}
+              </a>
+            </div>
+          </div>
+          <div className="hero-photo">
+            <img src="/myPhoto.jpeg" alt="Nawazish Khan" />
+          </div>
         </div>
       </section>
 
       <section id="status" className="status-section section-card">
         <h3 className="section-heading">
-          Live Cluster Status
-          <span className="user-location-badge">
-            📍 {status.userLocation || 'Detecting...'}
-          </span>
+          {lang.status.title}
+          <span className="user-location-badge">📍 {status.userLocation || 'Detecting...'}</span>
         </h3>
         <div className="status-summary">
           {isLoading ? (
-            'Loading...'
+            lang.status.loading
           ) : status.totalCount > 0 ? (
             <>
-              <span className="status-count">
-                {status.totalOnline} / {status.totalCount} clusters online
-              </span>
+              <span className="status-count">{status.totalOnline} / {status.totalCount} {lang.status.online}</span>
               <span className="status-update-timer">
-                {countdown > 0 ? `⏳ Updating in ${countdown}s` : '🔄 Updating...'}
+                {countdown > 0 ? `⏳ ${lang.status.updating} ${countdown}s` : '🔄 Updating...'}
               </span>
             </>
           ) : (
-            'Connecting...'
+            lang.status.connecting
           )}
         </div>
         <div className="cluster-grid">
           {status.clusters.map(cluster => {
             const provider = getProviderFromName(cluster.name)
-            
             return (
               <div
                 key={cluster.name}
                 className={`cluster-card ${cluster.online ? 'online' : 'offline'}`}
-                style={{
-                  borderColor: cluster.online ? cloudColors[provider] : '#ef4444',
-                }}
+                style={{ borderColor: cluster.online ? cloudColors[provider] : '#ef4444' }}
               >
                 <div className="cluster-icon">
-                  <img
-                    src={cloudLogos[provider] || cloudLogos.Azure}
-                    alt={provider}
-                  />
+                  <img src={cloudLogos[provider] || cloudLogos.Azure} alt={provider} />
                 </div>
                 <div className="cluster-info">
-                  <h4 style={{ color: cloudColors[provider] || '#fff' }}>
-                    {cluster.display || cluster.name}
-                  </h4>
-                  <p className="region">
-                    {cluster.emoji || '🌐'} {cluster.region}
-                  </p>
+                  <h4 style={{ color: cloudColors[provider] || '#fff' }}>{cluster.display || cluster.name}</h4>
+                  <p className="region">{cluster.emoji || '🌐'} {cluster.region}</p>
                   <p className="status-text">
                     <span className={`dot ${cluster.online ? 'green' : 'red'}`}></span>
                     {cluster.online ? 'Online' : 'Offline'}
@@ -233,9 +373,7 @@ function App() {
                           <span className="latency-tooltip-icon">ⓘ</span>
                           <span className="latency-tooltip-text">
                             <div className="tooltip-content">
-                              <div className="tooltip-header">
-                                <span>⚡ Network Performance</span>
-                              </div>
+                              <div className="tooltip-header">⚡ Network Performance</div>
                               <div className="tooltip-body">
                                 <div className="tooltip-row">
                                   <span className="tooltip-label">📍 You:</span>
@@ -247,9 +385,7 @@ function App() {
                                 </div>
                                 <div className="tooltip-row">
                                   <span className="tooltip-label">📏 Distance:</span>
-                                  <span className="tooltip-value">
-                                    {formatDistance(cluster.distanceKm)}
-                                  </span>
+                                  <span className="tooltip-value">{formatDistance(cluster.distanceKm)}</span>
                                 </div>
                                 <div className="tooltip-divider"></div>
                                 <div className="tooltip-row highlight">
@@ -258,9 +394,7 @@ function App() {
                                     {cluster.latencyMs && cluster.latencyMs > 0 ? `${cluster.latencyMs} ms` : 'measuring...'}
                                   </span>
                                 </div>
-                                <div className="tooltip-footer" style={{ color: '#6b7280', fontSize: '0.75rem' }}>
-                                  ⚡ Measured directly from your browser
-                                </div>
+                                <div className="tooltip-footer">⚡ Measured directly from your browser</div>
                               </div>
                             </div>
                           </span>
@@ -282,19 +416,11 @@ function App() {
       </section>
 
       <section id="about" className="about-section section-card">
-        <h3 className="section-heading">About Me</h3>
+        <h3 className="section-heading">{lang.about.title}</h3>
         <div className="about-content">
-          <p className="about-text">
-            I'm a Cloud & Platform Engineer with a passion for automation and observability.
-            I specialize in building <span className="highlight">Kubernetes</span> clusters, 
-            implementing <span className="highlight">GitOps</span> workflows, and designing 
-            <span className="highlight"> multi-cloud</span> architectures — treating infrastructure 
-            as code with the same rigor as application code.
-          </p>
-          <p className="about-text">
-            This portfolio is a live demonstration of these principles in action, 
-            deployed across four cloud providers using Terraform, Argo CD, and Flux CD.
-          </p>
+          <p className="about-text">{lang.about.text1}</p>
+          <p className="about-text">{lang.about.text2}</p>
+          <p className="about-text highlight-text">{lang.about.language}</p>
           <div className="about-tags">
             <span className="tag">AWS</span>
             <span className="tag">Azure</span>
@@ -309,8 +435,86 @@ function App() {
         </div>
       </section>
 
+      <section id="certifications" className="certifications-section section-card">
+        <h3 className="section-heading">{lang.certifications.title}</h3>
+        <div className="cert-grid">
+          <div className="cert-card">
+            <h4>{lang.certifications.microsoft}</h4>
+            <ul>
+              <li>
+                <strong>{lang.certifications.azure}</strong>
+                <span className="cert-date">{lang.certifications.azureDate}</span>
+                {pdfExists.azureAdmin && (
+                  <a 
+                    href={lang.certifications.azureFile} 
+                    target="_blank" 
+                    rel="noopener noreferrer" 
+                    className="cert-link"
+                  >
+                    {lang.certifications.show}
+                  </a>
+                )}
+              </li>
+              <li>
+                <strong>{lang.certifications.devops}</strong>
+                <span className="cert-date">{lang.certifications.devopsDate}</span>
+                {pdfExists.azureDevops && (
+                  <a 
+                    href={lang.certifications.devopsFile} 
+                    target="_blank" 
+                    rel="noopener noreferrer" 
+                    className="cert-link"
+                  >
+                    {lang.certifications.show}
+                  </a>
+                )}
+              </li>
+            </ul>
+          </div>
+          <div className="cert-card">
+            <h4>{lang.certifications.aws}</h4>
+            <ul>
+              <li>
+                <strong>{lang.certifications.awsCert}</strong>
+                <span className="cert-date">{lang.certifications.awsDate}</span>
+                {pdfExists.awsSa && (
+                  <a 
+                    href={lang.certifications.awsFile} 
+                    target="_blank" 
+                    rel="noopener noreferrer" 
+                    className="cert-link"
+                  >
+                    {lang.certifications.show}
+                  </a>
+                )}
+              </li>
+            </ul>
+          </div>
+          <div className="cert-card">
+            <h4>{lang.certifications.german}</h4>
+            <ul>
+              <li>
+                <strong>{lang.certifications.telc}</strong>
+                <span className="cert-date">{lang.certifications.telcDate}</span>
+                {pdfExists.telcC1 && (
+                  <a 
+                    href={lang.certifications.telcFile} 
+                    target="_blank" 
+                    rel="noopener noreferrer" 
+                    className="cert-link"
+                  >
+                    {lang.certifications.show}
+                  </a>
+                )}
+              </li>
+            </ul>
+            <p className="cert-note">{lang.certifications.note}</p>
+          </div>
+        </div>
+      </section>
+
       <section id="project" className="project-section section-card">
-        <h3 className="section-heading">Featured Project</h3>
+        <h3 className="section-heading">{lang.project.title}</h3>
         <div className="project-content">
           <div className="project-header">
             <h4>
@@ -321,53 +525,43 @@ function App() {
                 className="project-link"
                 title="View on GitHub"
               >
-                Multi‑Cloud Portfolio Deployment
+                {lang.project.name}
               </a>
             </h4>
-            <span className="project-status">Live</span>
+            <span className="project-status">{lang.project.status}</span>
           </div>
-          <p className="project-description">
-            A production-grade portfolio deployed across <strong>AWS EKS</strong>, 
-            <strong>Azure k3s</strong>, <strong>Azure AKS</strong>, and <strong>GCP GKE</strong>.
-            Infrastructure provisioned with Terraform, CI/CD via GitHub Actions, 
-            and GitOps managed through Argo CD and Flux CD.
-          </p>
+          <p className="project-description">{lang.project.description}</p>
           <div className="project-tags">
-            <span>Kubernetes</span>
-            <span>Terraform</span>
-            <span>Argo CD</span>
-            <span>GitOps</span>
+            {lang.project.tags.map(tag => <span key={tag}>{tag}</span>)}
           </div>
         </div>
       </section>
 
       <section id="stack" className="stack-section section-card">
-        <h3 className="section-heading">Tech Stack</h3>
+        <h3 className="section-heading">{lang.stack.title}</h3>
         <div className="stack-grid">
           <div className="stack-card">
-            <h4>Cloud</h4>
+            <h4>{lang.stack.cloud}</h4>
             <ul><li>AWS</li><li>Azure</li><li>GCP</li></ul>
           </div>
           <div className="stack-card">
-            <h4>IaC & Containers</h4>
+            <h4>{lang.stack.iaac}</h4>
             <ul><li>Terraform</li><li>Kubernetes</li><li>Helm</li><li>Docker</li></ul>
           </div>
           <div className="stack-card">
-            <h4>CI/CD & GitOps</h4>
+            <h4>{lang.stack.cicd}</h4>
             <ul><li>GitHub Actions</li><li>Argo CD</li><li>Flux CD</li></ul>
           </div>
           <div className="stack-card">
-            <h4>Observability</h4>
+            <h4>{lang.stack.observability}</h4>
             <ul><li>Prometheus</li><li>Grafana</li></ul>
           </div>
         </div>
       </section>
 
       <section id="contact" className="contact-section section-card">
-        <h3 className="section-heading">Let's Connect</h3>
-        <p className="contact-text">
-          Open to Cloud, DevOps, SRE, and Platform Engineering opportunities.
-        </p>
+        <h3 className="section-heading">{lang.contact.title}</h3>
+        <p className="contact-text">{lang.contact.text}</p>
         <div className="contact-links">
           <a href={`mailto:${config.email}`} className="contact-link" title="Email">
             <span className="contact-icon">
@@ -379,28 +573,22 @@ function App() {
             Email
           </a>
           <a href={config.github} target="_blank" rel="noopener noreferrer" className="contact-link" title="GitHub">
-            <span className="contact-icon">
-              <img src={cloudLogos.GitHub} alt="GitHub" className="contact-icon-img" />
-            </span>
+            <span className="contact-icon"><img src={cloudLogos.GitHub} alt="GitHub" className="contact-icon-img" /></span>
             GitHub
           </a>
           <a href={config.linkedin} target="_blank" rel="noopener noreferrer" className="contact-link" title="LinkedIn">
-            <span className="contact-icon">
-              <img src={cloudLogos.LinkedIn} alt="LinkedIn" className="contact-icon-img" />
-            </span>
+            <span className="contact-icon"><img src={cloudLogos.LinkedIn} alt="LinkedIn" className="contact-icon-img" /></span>
             LinkedIn
           </a>
           <a href={config.xing} target="_blank" rel="noopener noreferrer" className="contact-link" title="Xing">
-            <span className="contact-icon">
-              <img src={cloudLogos.Xing} alt="Xing" className="contact-icon-img" />
-            </span>
+            <span className="contact-icon"><img src={cloudLogos.Xing} alt="Xing" className="contact-icon-img" /></span>
             Xing
           </a>
         </div>
       </section>
 
       <footer>
-        <p>© 2026 Nawazish Khan · Built with React · Deployed via GitOps</p>
+        <p>{lang.footer}</p>
       </footer>
     </div>
   )
