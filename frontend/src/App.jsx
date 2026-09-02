@@ -293,7 +293,16 @@ function App() {
             onClick={() => setLanguage(language === 'en' ? 'de' : 'en')} 
             className="lang-switcher"
           >
-            {language === 'en' ? '🇩🇪 DE' : '🇬🇧 EN'}
+            <span className="flag-icon">
+              <img 
+                src={language === 'en' ? 'https://flagcdn.com/de.svg' : 'https://flagcdn.com/gb.svg'} 
+                alt={language === 'en' ? 'German' : 'English'} 
+                className="flag-img" 
+                width="20" 
+                height="15" 
+              />
+              {language === 'en' ? ' DE' : ' EN'}
+            </span>
           </button>
         </div>
       </nav>
