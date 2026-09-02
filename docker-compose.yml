@@ -21,6 +21,7 @@ services:
       - backend
   backend:
     environment:
+    - TEST_IP=219.65.83.134 # Mumbai IP, Override location for localhost testing
     - CLUSTER_GCP_URL=https://gcp.nawazishkhan.click
     - CLUSTER_AZURE_URL=https://azure.nawazishkhan.click
     - CLUSTER_AWS_URL=https://aws.nawazishkhan.click

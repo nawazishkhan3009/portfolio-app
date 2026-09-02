@@ -1,11 +1,16 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import './App.css'
 import config from './config'
 
 const cloudLogos = {
+  // Cloud provider logos
   Azure: 'https://www.vectorlogo.zone/logos/microsoft_azure/microsoft_azure-icon.svg',
   GCP: 'https://www.vectorlogo.zone/logos/google_cloud/google_cloud-icon.svg',
   AWS: 'https://www.vectorlogo.zone/logos/amazon_aws/amazon_aws-icon.svg',
+  // Brand icons for contact section
+  GitHub: 'https://www.vectorlogo.zone/logos/github/github-icon.svg',
+  LinkedIn: 'https://www.vectorlogo.zone/logos/linkedin/linkedin-icon.svg',
+  Xing: 'https://www.vectorlogo.zone/logos/xing/xing-icon.svg',
 }
 
 const cloudColors = {
@@ -14,149 +19,26 @@ const cloudColors = {
   AWS: '#FF9900',
 }
 
-// Cluster URLs for latency testing - keyed by cluster name
-const CLUSTER_URLS = {
-  'portfolio-gke': 'https://gcp.nawazishkhan.click',
-  'portfolio-azure': 'https://azure.nawazishkhan.click',
-  'portfolio-aks': 'https://aks.nawazishkhan.click',
-  'portfolio-aws': 'https://aws.nawazishkhan.click',
-}
-
-// Cluster display names - keyed by cluster name
-const CLUSTER_DISPLAY_NAMES = {
-  'portfolio-gke': 'GKE',
-  'portfolio-azure': 'Azure k3s',
-  'portfolio-aks': 'Azure AKS',
-  'portfolio-aws': 'EKS',
-}
-
-// Cluster information with short display names - keyed by region
-const CLUSTER_INFO = {
-  'asia-southeast1': { 
-    lat: 1.3521, 
-    lng: 103.8198, 
-    display: 'Singapore',
-    emoji: '🌏' 
-  },
-  'westeurope': { 
-    lat: 52.3702, 
-    lng: 4.8952, 
-    display: 'Netherlands',
-    emoji: '🌍' 
-  },
-  'eu-east-1': { 
-    lat: 38.9072, 
-    lng: -77.0369, 
-    display: 'Virginia',
-    emoji: '🌎' 
-  },
-}
-
-// Haversine formula for distance calculation
-function getDistance(lat1, lon1, lat2, lon2) {
-  const R = 6371
-  const dLat = (lat2 - lat1) * Math.PI / 180
-  const dLon = (lon2 - lon1) * Math.PI / 180
-  const a = 
-    Math.sin(dLat/2) * Math.sin(dLat/2) +
-    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-    Math.sin(dLon/2) * Math.sin(dLon/2)
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a))
-  return R * c
-}
+// CONFIGURATION - Easily modify the update interval (in seconds)
+const UPDATE_INTERVAL_SECONDS = 10 // Change this to adjust refresh rate
 
 function App() {
   const [status, setStatus] = useState({
     clusters: [],
     totalOnline: 0,
     totalCount: 0,
+    userLocation: 'Detecting...'
   })
-  const [userInfo, setUserInfo] = useState({
-    location: 'Detecting...',
-    lat: 0,
-    lng: 0,
-    found: false
-  })
+  const [isLoading, setIsLoading] = useState(true)
+  const [countdown, setCountdown] = useState(UPDATE_INTERVAL_SECONDS)
+  
+  // Use ref to track if we're currently fetching
+  const isFetchingRef = useRef(false)
 
-  // Detect location with multiple API fallbacks - NO REFERER
-  useEffect(() => {
-    const detectLocation = async () => {
-      const apis = [
-        {
-          url: 'https://ipapi.co/json/',
-          parse: (data) => ({
-            location: data.city && data.country_name ? `${data.city}, ${data.country_name}` : null,
-            lat: data.latitude || 0,
-            lng: data.longitude || 0,
-            success: !!(data.city && data.country_name && data.latitude && data.longitude)
-          })
-        },
-        {
-          url: 'https://ip-api.com/json/',
-          parse: (data) => ({
-            location: data.status === 'success' ? `${data.city}, ${data.country}` : null,
-            lat: data.status === 'success' ? data.lat : 0,
-            lng: data.status === 'success' ? data.lon : 0,
-            success: data.status === 'success'
-          })
-        },
-        {
-          url: 'https://geolocation-db.com/json/',
-          parse: (data) => ({
-            location: data.city && data.country_name ? `${data.city}, ${data.country_name}` : null,
-            lat: data.latitude || 0,
-            lng: data.longitude || 0,
-            success: !!(data.city && data.country_name)
-          })
-        }
-      ]
-
-      for (const api of apis) {
-        try {
-          const controller = new AbortController()
-          const timeoutId = setTimeout(() => controller.abort(), 5000)
-          
-          const response = await fetch(api.url, { 
-            signal: controller.signal,
-            referrerPolicy: 'no-referrer',
-            headers: {
-              'Referer': ''
-            }
-          })
-          clearTimeout(timeoutId)
-          
-          const data = await response.json()
-          const result = api.parse(data)
-          
-          if (result.success && result.location) {
-            setUserInfo({
-              location: result.location,
-              lat: result.lat,
-              lng: result.lng,
-              found: true
-            })
-            console.log('✅ Location found:', result.location)
-            return
-          }
-        } catch (error) {
-          console.warn(`❌ Failed to get location from ${api.url}:`, error.message)
-        }
-      }
-
-      console.warn('⚠️ All location APIs failed')
-      setUserInfo({
-        location: 'CouldNotFind',
-        lat: 0,
-        lng: 0,
-        found: false
-      })
-    }
-
-    detectLocation()
-  }, [])
-
-  // Measure latency from user's browser
+  // Measure latency from browser to a cluster URL
   const measureLatency = async (url) => {
+    if (!url) return -1
+    
     const start = performance.now()
     try {
       await fetch(`${url}?t=${Date.now()}`, {
@@ -172,74 +54,96 @@ function App() {
   }
 
   const fetchStatus = async () => {
+    // Prevent multiple simultaneous fetches
+    if (isFetchingRef.current) return
+    isFetchingRef.current = true
+    
+    setIsLoading(true)
     try {
+      // Get ALL cluster data from backend (single source of truth)
       const response = await fetch('/api/status')
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      
       const data = await response.json()
       
+      // Measure latency from browser to each cluster
       const clustersWithLatency = await Promise.all(
         data.clusters.map(async (cluster) => {
-          // Use cluster name to get the correct URL
-          const url = CLUSTER_URLS[cluster.name]
-          const latency = await measureLatency(url)
+          let latency = -1
+          if (cluster.online) {
+            latency = await measureLatency(cluster.url)
+          }
           return {
             ...cluster,
-            latencyMs: latency,
-            online: latency >= 0
+            latencyMs: latency
           }
         })
       )
       
-      const onlineCount = clustersWithLatency.filter(c => c.online).length
-      
       setStatus({
         clusters: clustersWithLatency,
-        totalOnline: onlineCount,
-        totalCount: clustersWithLatency.length,
+        totalOnline: data.totalOnline || 0,
+        totalCount: data.totalCount || 0,
+        userLocation: data.userLocation || 'Unknown'
       })
     } catch (error) {
       console.error('Failed to fetch status:', error)
-      setStatus({ clusters: [], totalOnline: 0, totalCount: 0 })
+      setStatus({ clusters: [], totalOnline: 0, totalCount: 0, userLocation: 'Error' })
+    } finally {
+      setIsLoading(false)
+      isFetchingRef.current = false
+      // Reset countdown to full interval after fetch completes
+      setCountdown(UPDATE_INTERVAL_SECONDS)
     }
   }
 
+  // Fetch status on mount
   useEffect(() => {
     fetchStatus()
-    const interval = setInterval(fetchStatus, 5000)
+  }, [])
+
+  // Set up the interval for periodic fetching
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchStatus()
+    }, UPDATE_INTERVAL_SECONDS * 1000)
+    
     return () => clearInterval(interval)
   }, [])
 
+  // Countdown timer - runs independently
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCountdown((prev) => {
+        // Only decrement if we're not loading and countdown > 0
+        if (!isLoading && prev > 0) {
+          return prev - 1
+        }
+        return prev
+      })
+    }, 1000)
+    
+    return () => clearInterval(timer)
+  }, [isLoading])
+
   // Helper functions
-  const getClusterInfo = (region) => {
-    return CLUSTER_INFO[region] || { display: region, emoji: '🌐', lat: 0, lng: 0 }
+  const getProviderFromName = (clusterName) => {
+    if (clusterName.includes('gke')) return 'GCP'
+    if (clusterName.includes('azure') || clusterName.includes('aks')) return 'Azure'
+    if (clusterName.includes('aws')) return 'AWS'
+    return 'Azure'
   }
 
   const formatDistance = (distance) => {
-    if (!distance) return 'NA'
+    if (!distance || distance <= 0) return 'NA'
     if (distance < 1000) {
       return `${Math.round(distance)} km`
     } else {
       return `${(distance / 1000).toFixed(1)}k km`
     }
-  }
-
-  const getDisplayLocation = () => {
-    if (!userInfo.found) {
-      return 'CouldNotFind'
-    }
-    return userInfo.location
-  }
-
-  // Get display name for cluster based on unique name
-  const getClusterDisplayName = (clusterName) => {
-    return CLUSTER_DISPLAY_NAMES[clusterName] || clusterName
-  }
-
-  // Get provider from cluster name
-  const getProviderFromName = (clusterName) => {
-    if (clusterName.includes('gke')) return 'GCP'
-    if (clusterName.includes('azure') || clusterName.includes('aks')) return 'Azure'
-    if (clusterName.includes('aws')) return 'AWS'
-    return 'Azure' // Default
   }
 
   return (
@@ -267,34 +171,32 @@ function App() {
         </div>
       </section>
 
-      <section id="status" className="status-section">
+      <section id="status" className="status-section section-card">
         <h3 className="section-heading">
           Live Cluster Status
           <span className="user-location-badge">
-            📍 {getDisplayLocation()}
+            📍 {status.userLocation || 'Detecting...'}
           </span>
         </h3>
         <div className="status-summary">
-          {status.totalCount > 0
-            ? `${status.totalOnline} / ${status.totalCount} clusters online`
-            : 'Connecting...'}
+          {isLoading ? (
+            'Loading...'
+          ) : status.totalCount > 0 ? (
+            <>
+              <span className="status-count">
+                {status.totalOnline} / {status.totalCount} clusters online
+              </span>
+              <span className="status-update-timer">
+                {countdown > 0 ? `⏳ Updating in ${countdown}s` : '🔄 Updating...'}
+              </span>
+            </>
+          ) : (
+            'Connecting...'
+          )}
         </div>
         <div className="cluster-grid">
           {status.clusters.map(cluster => {
-            const displayName = getClusterDisplayName(cluster.name)
             const provider = getProviderFromName(cluster.name)
-            const clusterInfo = getClusterInfo(cluster.region)
-            
-            // Calculate distance from user to cluster
-            let distance = null
-            if (userInfo.found && userInfo.lat && userInfo.lng && clusterInfo.lat && clusterInfo.lng) {
-              distance = getDistance(
-                userInfo.lat, 
-                userInfo.lng, 
-                clusterInfo.lat, 
-                clusterInfo.lng
-              )
-            }
             
             return (
               <div
@@ -312,10 +214,10 @@ function App() {
                 </div>
                 <div className="cluster-info">
                   <h4 style={{ color: cloudColors[provider] || '#fff' }}>
-                    {displayName}
+                    {cluster.display || cluster.name}
                   </h4>
                   <p className="region">
-                    {clusterInfo.emoji} {clusterInfo.display}
+                    {cluster.emoji || '🌐'} {cluster.region}
                   </p>
                   <p className="status-text">
                     <span className={`dot ${cluster.online ? 'green' : 'red'}`}></span>
@@ -325,38 +227,40 @@ function App() {
                     <span>
                       {cluster.online ? (
                         <span className="latency-tooltip-container">
-                          <span className="latency-number">{cluster.latencyMs} ms</span>
+                          <span className="latency-number">
+                            {cluster.latencyMs && cluster.latencyMs > 0 ? `${cluster.latencyMs} ms` : '⏳ measuring'}
+                          </span>
                           <span className="latency-tooltip-icon">ⓘ</span>
                           <span className="latency-tooltip-text">
                             <div className="tooltip-content">
                               <div className="tooltip-header">
-                                <span>⚡ Latency from your browser</span>
+                                <span>⚡ Network Performance</span>
                               </div>
                               <div className="tooltip-body">
                                 <div className="tooltip-row">
                                   <span className="tooltip-label">📍 You:</span>
-                                  <span className="tooltip-value">{getDisplayLocation()}</span>
+                                  <span className="tooltip-value">{status.userLocation || 'Unknown'}</span>
                                 </div>
                                 <div className="tooltip-row">
                                   <span className="tooltip-label">☁️ Cluster:</span>
-                                  <span className="tooltip-value">{clusterInfo.emoji} {clusterInfo.display}</span>
+                                  <span className="tooltip-value">{cluster.emoji || '🌐'} {cluster.region}</span>
                                 </div>
                                 <div className="tooltip-row">
                                   <span className="tooltip-label">📏 Distance:</span>
-                                  <span className="tooltip-value">{formatDistance(distance)}</span>
+                                  <span className="tooltip-value">
+                                    {formatDistance(cluster.distanceKm)}
+                                  </span>
                                 </div>
                                 <div className="tooltip-divider"></div>
                                 <div className="tooltip-row highlight">
-                                  <span className="tooltip-label">⏱️ Round-trip:</span>
+                                  <span className="tooltip-label">⏱️ Measured RTT:</span>
                                   <span className="tooltip-value" style={{ color: '#60a5fa', fontWeight: 'bold' }}>
-                                    {cluster.latencyMs} ms
+                                    {cluster.latencyMs && cluster.latencyMs > 0 ? `${cluster.latencyMs} ms` : 'measuring...'}
                                   </span>
                                 </div>
-                                {!userInfo.found && (
-                                  <div className="tooltip-footer" style={{ color: '#f59e0b' }}>
-                                    ⚠️ Location not detected - distance unavailable
-                                  </div>
-                                )}
+                                <div className="tooltip-footer" style={{ color: '#6b7280', fontSize: '0.75rem' }}>
+                                  ⚡ Measured directly from your browser
+                                </div>
                               </div>
                             </div>
                           </span>
@@ -377,69 +281,121 @@ function App() {
         </div>
       </section>
 
-      <section id="about" className="about-section">
+      <section id="about" className="about-section section-card">
         <h3 className="section-heading">About Me</h3>
-        <p>
-          I'm a Cloud & Platform Engineer with a passion for automation, observability, and
-          GitOps. This site itself is a live demo of a multi‑cloud Kubernetes deployment
-          managed entirely through Argo CD and Terraform. Every commit rolls out across
-          AWS (EKS), Azure (k3s), Azure (AKS), and Google Cloud (GKE).
-        </p>
-        {!userInfo.found && (
-          <div className="location-warning">
-            <span className="warning-icon">⚠️</span>
-            <span className="warning-text">
-              Location detection failed. Distance information is unavailable.
-            </span>
+        <div className="about-content">
+          <p className="about-text">
+            I'm a Cloud & Platform Engineer with a passion for automation and observability.
+            I specialize in building <span className="highlight">Kubernetes</span> clusters, 
+            implementing <span className="highlight">GitOps</span> workflows, and designing 
+            <span className="highlight"> multi-cloud</span> architectures — treating infrastructure 
+            as code with the same rigor as application code.
+          </p>
+          <p className="about-text">
+            This portfolio is a live demonstration of these principles in action, 
+            deployed across four cloud providers using Terraform, Argo CD, and Flux CD.
+          </p>
+          <div className="about-tags">
+            <span className="tag">AWS</span>
+            <span className="tag">Azure</span>
+            <span className="tag">GCP</span>
+            <span className="tag">Terraform</span>
+            <span className="tag">Kubernetes</span>
+            <span className="tag">Argo CD</span>
+            <span className="tag">Flux CD</span>
+            <span className="tag">Prometheus</span>
+            <span className="tag">Grafana</span>
           </div>
-        )}
+        </div>
       </section>
 
-      <section id="stack" className="stack-section">
+      <section id="project" className="project-section section-card">
+        <h3 className="section-heading">Featured Project</h3>
+        <div className="project-content">
+          <div className="project-header">
+            <h4>
+              <a 
+                href="https://github.com/nawazishkhan3009/portfolio-app" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="project-link"
+                title="View on GitHub"
+              >
+                Multi‑Cloud Portfolio Deployment
+              </a>
+            </h4>
+            <span className="project-status">Live</span>
+          </div>
+          <p className="project-description">
+            A production-grade portfolio deployed across <strong>AWS EKS</strong>, 
+            <strong>Azure k3s</strong>, <strong>Azure AKS</strong>, and <strong>GCP GKE</strong>.
+            Infrastructure provisioned with Terraform, CI/CD via GitHub Actions, 
+            and GitOps managed through Argo CD and Flux CD.
+          </p>
+          <div className="project-tags">
+            <span>Kubernetes</span>
+            <span>Terraform</span>
+            <span>Argo CD</span>
+            <span>GitOps</span>
+          </div>
+        </div>
+      </section>
+
+      <section id="stack" className="stack-section section-card">
         <h3 className="section-heading">Tech Stack</h3>
         <div className="stack-grid">
           <div className="stack-card">
-            <h4>☁️ Cloud</h4>
+            <h4>Cloud</h4>
             <ul><li>AWS</li><li>Azure</li><li>GCP</li></ul>
           </div>
           <div className="stack-card">
-            <h4>⚙️ IaC & Containers</h4>
+            <h4>IaC & Containers</h4>
             <ul><li>Terraform</li><li>Kubernetes</li><li>Helm</li><li>Docker</li></ul>
           </div>
           <div className="stack-card">
-            <h4>🔄 CI/CD & GitOps</h4>
+            <h4>CI/CD & GitOps</h4>
             <ul><li>GitHub Actions</li><li>Argo CD</li><li>Flux CD</li></ul>
           </div>
           <div className="stack-card">
-            <h4>📊 Observability</h4>
+            <h4>Observability</h4>
             <ul><li>Prometheus</li><li>Grafana</li></ul>
           </div>
         </div>
       </section>
 
-      <section id="project" className="project-section">
-        <h3 className="section-heading">Featured Project</h3>
-        <div className="project-card">
-          <h4>Multi‑Cloud Portfolio Deployment</h4>
-          <p>
-            This website is deployed simultaneously on AWS (EKS), Azure (k3s), Azure (AKS), and Google Cloud (GKE).
-            Infrastructure provisioned with Terraform. CI/CD via GitHub Actions and Argo CD.
-            Real‑time metrics streamed to Prometheus and Grafana.
-          </p>
-          <div className="project-tags">
-            <span>Kubernetes</span><span>Terraform</span><span>Argo CD</span><span>GitOps</span>
-          </div>
-        </div>
-      </section>
-
-      <section id="contact" className="contact-section">
+      <section id="contact" className="contact-section section-card">
         <h3 className="section-heading">Let's Connect</h3>
-        <p>Open to Cloud, DevOps, SRE, and Platform Engineering opportunities.</p>
+        <p className="contact-text">
+          Open to Cloud, DevOps, SRE, and Platform Engineering opportunities.
+        </p>
         <div className="contact-links">
-          <a href={`mailto:${config.email}`}>Email</a>
-          <a href={config.github} target="_blank" rel="noopener noreferrer">GitHub</a>
-          <a href={config.linkedin} target="_blank" rel="noopener noreferrer">LinkedIn</a>
-          <a href={config.xing} target="_blank" rel="noopener noreferrer">Xing</a>
+          <a href={`mailto:${config.email}`} className="contact-link" title="Email">
+            <span className="contact-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                <polyline points="22,6 12,13 2,6"/>
+              </svg>
+            </span>
+            Email
+          </a>
+          <a href={config.github} target="_blank" rel="noopener noreferrer" className="contact-link" title="GitHub">
+            <span className="contact-icon">
+              <img src={cloudLogos.GitHub} alt="GitHub" className="contact-icon-img" />
+            </span>
+            GitHub
+          </a>
+          <a href={config.linkedin} target="_blank" rel="noopener noreferrer" className="contact-link" title="LinkedIn">
+            <span className="contact-icon">
+              <img src={cloudLogos.LinkedIn} alt="LinkedIn" className="contact-icon-img" />
+            </span>
+            LinkedIn
+          </a>
+          <a href={config.xing} target="_blank" rel="noopener noreferrer" className="contact-link" title="Xing">
+            <span className="contact-icon">
+              <img src={cloudLogos.Xing} alt="Xing" className="contact-icon-img" />
+            </span>
+            Xing
+          </a>
         </div>
       </section>
 
