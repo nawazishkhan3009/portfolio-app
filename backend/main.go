@@ -56,11 +56,12 @@ var clusterLocations = map[string]struct {
 	"asia-southeast1": {Lat: 1.3521, Lng: 103.8198},
 	"westeurope":      {Lat: 52.3702, Lng: 4.8952},
 	"eu-east-1":       {Lat: 38.9072, Lng: -77.0369},
+	"eastus":          {Lat: 47.673, Lng: -122.318},
 }
 
 // Haversine formula for distance calculation
 func haversine(lat1, lon1, lat2, lon2 float64) float64 {
-	const R = 6371 // Earth's radius in kilometers
+	const R = 6371
 
 	dLat := (lat2 - lat1) * math.Pi / 180
 	dLon := (lon2 - lon1) * math.Pi / 180
@@ -148,7 +149,6 @@ func statusHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Check cluster health and calculate distances
 	for _, c := range clusters {
-		// Check if cluster is online
 		resp, err := client.Get(c.URL)
 		online := err == nil && resp.StatusCode >= 200 && resp.StatusCode < 400
 
@@ -163,7 +163,6 @@ func statusHandler(w http.ResponseWriter, r *http.Request) {
 			clusterUp.WithLabelValues(c.Provider, c.Region).Set(0)
 		}
 
-		// Calculate distance from user to cluster
 		var distance float64
 		clusterLoc, exists := clusterLocations[c.Region]
 		if exists && userLat != 0 && userLng != 0 {
@@ -196,6 +195,30 @@ func statusHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(resp)
 }
 
+// Get the real client IP from the request
+// Works with Nginx config that sets X-Real-IP and X-Forwarded-For
+func getRealIP(r *http.Request) string {
+	// 1. Check X-Real-IP (set by your Nginx config)
+	if xri := r.Header.Get("X-Real-IP"); xri != "" {
+		return xri
+	}
+
+	// 2. Check X-Forwarded-For (standard for proxies)
+	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
+		ips := strings.Split(xff, ",")
+		if len(ips) > 0 {
+			return strings.TrimSpace(ips[0])
+		}
+	}
+
+	// 3. Fallback to RemoteAddr
+	ip := r.RemoteAddr
+	if idx := strings.Index(ip, ":"); idx != -1 {
+		ip = ip[:idx]
+	}
+	return ip
+}
+
 // Get location from IP address
 func getLocationFromIP(r *http.Request) (float64, float64, string) {
 	// Check for TEST_IP environment variable (for local development)
@@ -204,27 +227,55 @@ func getLocationFromIP(r *http.Request) (float64, float64, string) {
 		return getLocationFromIPAddress(testIP)
 	}
 
-	ip := r.Header.Get("X-Forwarded-For")
-	if ip == "" {
-		ip = r.RemoteAddr
+	// Get the real client IP
+	ip := getRealIP(r)
+	log.Printf("🌐 Client IP: %s", ip)
+
+	// Skip if IP is invalid (loopback, empty)
+	if ip == "" || ip == "::1" || ip == "0.0.0.0" || strings.HasPrefix(ip, "127.") {
+		log.Printf("⚠️ Invalid/loopback IP: %s", ip)
+		return 0, 0, "unknown"
 	}
 
-	// Remove port if present
-	if idx := strings.Index(ip, ":"); idx != -1 {
-		ip = ip[:idx]
-	}
-
-	// If localhost, use a default test IP (Berlin)
-	if ip == "127.0.0.1" || ip == "::1" {
-		log.Println("🔧 Localhost detected, using Berlin IP for testing")
-		return getLocationFromIPAddress("85.214.0.0")
+	// If IP is private (behind NAT), try X-Forwarded-For again
+	if isPrivateIP(ip) {
+		log.Printf("🔧 Private IP detected: %s, checking X-Forwarded-For", ip)
+		if forwarded := r.Header.Get("X-Forwarded-For"); forwarded != "" {
+			ips := strings.Split(forwarded, ",")
+			if len(ips) > 0 {
+				ip = strings.TrimSpace(ips[0])
+				log.Printf("🌐 Using X-Forwarded-For IP: %s", ip)
+			}
+		}
 	}
 
 	return getLocationFromIPAddress(ip)
 }
 
+// Check if an IP is private
+func isPrivateIP(ip string) bool {
+	privateRanges := []string{
+		"10.", "172.16.", "172.17.", "172.18.", "172.19.",
+		"172.20.", "172.21.", "172.22.", "172.23.", "172.24.",
+		"172.25.", "172.26.", "172.27.", "172.28.", "172.29.",
+		"172.30.", "172.31.", "192.168.",
+	}
+
+	for _, prefix := range privateRanges {
+		if strings.HasPrefix(ip, prefix) {
+			return true
+		}
+	}
+	return false
+}
+
 // Get location from a specific IP address using ip-api.com
 func getLocationFromIPAddress(ip string) (float64, float64, string) {
+	if ip == "" || ip == "0.0.0.0" {
+		log.Printf("⚠️ Invalid IP address, returning unknown")
+		return 0, 0, "unknown"
+	}
+
 	url := fmt.Sprintf("http://ip-api.com/json/%s", ip)
 	resp, err := http.Get(url)
 	if err != nil {
@@ -241,8 +292,13 @@ func getLocationFromIPAddress(ip string) (float64, float64, string) {
 		Country string  `json:"country"`
 	}
 
-	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil || data.Status != "success" {
+	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
 		log.Printf("Error parsing IP API response: %v", err)
+		return 0, 0, "unknown"
+	}
+
+	if data.Status != "success" {
+		log.Printf("IP API returned non-success status: %s", data.Status)
 		return 0, 0, "unknown"
 	}
 
