@@ -20,6 +20,7 @@ body {
   max-width: 1100px;
   margin: 0 auto;
   padding: 0 24px;
+  width: 100%;
 }
 
 /* Navigation */
@@ -30,7 +31,7 @@ body {
   padding: 28px 0;
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
   flex-wrap: wrap;
-  gap: 20px;
+  gap: 16px;
 }
 
 .nav-brand {
@@ -40,12 +41,13 @@ body {
   background: linear-gradient(135deg, #60a5fa, #a78bfa);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
+  white-space: nowrap;
 }
 
 .nav-links {
   display: flex;
   align-items: center;
-  gap: 36px;
+  gap: 28px;
   flex-wrap: wrap;
 }
 
@@ -53,9 +55,10 @@ body {
   color: #9ca3af;
   text-decoration: none;
   transition: color 0.3s ease;
-  font-size: 1.1rem;
+  font-size: 1.05rem;
   font-weight: 500;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.3px;
+  white-space: nowrap;
 }
 
 .nav-links a:hover {
@@ -66,18 +69,83 @@ body {
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.1);
   color: #d1d5db;
-  padding: 6px 18px;
+  padding: 6px 16px;
   border-radius: 6px;
   cursor: pointer;
   font-size: 0.9rem;
   font-weight: 500;
   transition: background 0.3s ease, border-color 0.3s ease;
   font-family: 'JetBrains Mono', 'Courier New', monospace;
+  white-space: nowrap;
+  margin-left: 4px;
 }
 
 .lang-switcher:hover {
   background: rgba(255, 255, 255, 0.1);
   border-color: rgba(255, 255, 255, 0.2);
+}
+
+/* Responsive Navigation */
+@media (max-width: 820px) {
+  .navbar {
+    flex-direction: column;
+    align-items: center;
+    padding: 20px 0;
+    gap: 14px;
+  }
+  
+  .nav-brand {
+    font-size: 1.1rem;
+  }
+  
+  .nav-links {
+    gap: 20px;
+    justify-content: center;
+    width: 100%;
+  }
+  
+  .nav-links a {
+    font-size: 0.95rem;
+  }
+  
+  .lang-switcher {
+    font-size: 0.85rem;
+    padding: 4px 14px;
+  }
+}
+
+@media (max-width: 600px) {
+  .nav-links {
+    gap: 14px;
+  }
+  
+  .nav-links a {
+    font-size: 0.85rem;
+  }
+  
+  .lang-switcher {
+    font-size: 0.8rem;
+    padding: 4px 12px;
+  }
+  
+  .nav-brand {
+    font-size: 0.95rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .nav-links {
+    gap: 10px;
+  }
+  
+  .nav-links a {
+    font-size: 0.75rem;
+  }
+  
+  .lang-switcher {
+    font-size: 0.7rem;
+    padding: 3px 10px;
+  }
 }
 
 /* Hero Section */
@@ -90,6 +158,19 @@ body {
   align-items: center;
   gap: 60px;
   justify-content: space-between;
+  opacity: 0;
+  animation: heroFadeIn 1s ease forwards;
+}
+
+@keyframes heroFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .hero-text {
@@ -104,6 +185,7 @@ body {
   -webkit-text-fill-color: transparent;
   font-weight: 700;
   letter-spacing: -0.5px;
+  animation-delay: 0.1s;
 }
 
 .hero-text h2 {
@@ -112,6 +194,7 @@ body {
   font-weight: 400;
   margin-bottom: 16px;
   letter-spacing: 0.5px;
+  animation-delay: 0.2s;
 }
 
 .hero-description {
@@ -122,6 +205,7 @@ body {
   margin-bottom: 0;
   font-weight: 400;
   letter-spacing: 0.3px;
+  animation-delay: 0.3s;
 }
 
 .hero-description strong {
@@ -134,6 +218,7 @@ body {
   gap: 32px;
   margin: 24px 0 28px;
   flex-wrap: wrap;
+  animation-delay: 0.4s;
 }
 
 .stat-item {
@@ -168,6 +253,7 @@ body {
   border: 4px solid rgba(96, 165, 250, 0.3);
   box-shadow: 0 0 60px rgba(96, 165, 250, 0.15);
   transition: border-color 0.3s ease, box-shadow 0.3s ease;
+  animation-delay: 0.2s;
 }
 
 .hero-photo:hover {
@@ -186,6 +272,7 @@ body {
   display: flex;
   gap: 16px;
   flex-wrap: wrap;
+  animation-delay: 0.5s;
 }
 
 .btn-primary {
@@ -275,11 +362,6 @@ body {
   gap: 12px;
   color: #e5e7eb;
   letter-spacing: 0.5px;
-}
-
-.section-heading::after {
-  content: '';
-  display: none;
 }
 
 /* Status Section */
@@ -824,8 +906,9 @@ body {
 
 .stack-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  grid-template-columns: repeat(4, 1fr);
   gap: 16px;
+  width: 100%;
 }
 
 .stack-card {
@@ -852,12 +935,27 @@ body {
   list-style: none;
   color: #d1d5db;
   font-size: 0.85rem;
+  padding: 0;
+  margin: 0;
 }
 
 .stack-card ul li {
   padding: 2px 0;
   opacity: 0.8;
   letter-spacing: 0.3px;
+}
+
+/* Responsive Stack */
+@media (max-width: 992px) {
+  .stack-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 480px) {
+  .stack-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* Contact Section */
@@ -1028,16 +1126,6 @@ footer {
     transform: translateX(-50%);
   }
   
-  .nav-links {
-    width: 100%;
-    justify-content: center;
-    gap: 24px;
-  }
-  
-  .nav-links a {
-    font-size: 0.95rem;
-  }
-  
   .section-card {
     padding: 20px;
   }
@@ -1045,17 +1133,6 @@ footer {
   .project-header {
     flex-direction: column;
     align-items: flex-start;
-  }
-  
-  .navbar {
-    flex-direction: column;
-    align-items: center;
-    padding: 20px 0;
-    gap: 16px;
-  }
-  
-  .nav-brand {
-    font-size: 1.1rem;
   }
 }
 
@@ -1113,21 +1190,128 @@ footer {
   .section-heading {
     font-size: 1.2rem;
   }
-  
-  .nav-links {
-    gap: 14px;
-  }
-  
-  .nav-links a {
-    font-size: 0.85rem;
-  }
-  
-  .lang-switcher {
-    font-size: 0.8rem;
-    padding: 4px 12px;
-  }
-  
-  .nav-brand {
-    font-size: 0.95rem;
-  }
+}
+
+/* ======================================== */
+/* SCROLL ANIMATION STYLES - FIXED VERSION */
+/* ======================================== */
+
+.animate-on-scroll {
+  opacity: 0;
+  transform: translateY(40px);
+  transition: opacity 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94), 
+              transform 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.animate-on-scroll.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Section heading */
+.animate-on-scroll .section-heading {
+  transition: opacity 0.6s ease 0.2s, transform 0.6s ease 0.2s;
+  opacity: 0;
+  transform: translateY(20px);
+}
+
+.animate-on-scroll.visible .section-heading {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Text elements */
+.animate-on-scroll .about-text,
+.animate-on-scroll .project-description,
+.animate-on-scroll .contact-text {
+  transition: opacity 0.6s ease 0.3s, transform 0.6s ease 0.3s;
+  opacity: 0;
+  transform: translateY(20px);
+}
+
+.animate-on-scroll.visible .about-text,
+.animate-on-scroll.visible .project-description,
+.animate-on-scroll.visible .contact-text {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Tags and grids - DON'T animate the grid container itself */
+.animate-on-scroll .about-tags,
+.animate-on-scroll .project-tags,
+.animate-on-scroll .cert-grid,
+.animate-on-scroll .contact-links {
+  transition: opacity 0.6s ease 0.4s, transform 0.6s ease 0.4s;
+  opacity: 0;
+  transform: translateY(20px);
+}
+
+.animate-on-scroll.visible .about-tags,
+.animate-on-scroll.visible .project-tags,
+.animate-on-scroll.visible .cert-grid,
+.animate-on-scroll.visible .contact-links {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* STACK GRID - DON'T animate the grid itself */
+.animate-on-scroll .stack-grid {
+  opacity: 1 !important;
+  transform: none !important;
+}
+
+/* STACK CARDS - Animate each card individually */
+.animate-on-scroll .stack-card {
+  transition: opacity 0.5s ease, transform 0.5s ease;
+  opacity: 0;
+  transform: translateY(30px);
+}
+
+.animate-on-scroll.visible .stack-card:nth-child(1) {
+  opacity: 1;
+  transform: translateY(0);
+  transition-delay: 0.15s;
+}
+
+.animate-on-scroll.visible .stack-card:nth-child(2) {
+  opacity: 1;
+  transform: translateY(0);
+  transition-delay: 0.25s;
+}
+
+.animate-on-scroll.visible .stack-card:nth-child(3) {
+  opacity: 1;
+  transform: translateY(0);
+  transition-delay: 0.35s;
+}
+
+.animate-on-scroll.visible .stack-card:nth-child(4) {
+  opacity: 1;
+  transform: translateY(0);
+  transition-delay: 0.45s;
+}
+
+/* CERT CARDS - Animate each card individually */
+.animate-on-scroll .cert-card {
+  transition: opacity 0.5s ease, transform 0.5s ease;
+  opacity: 0;
+  transform: translateY(30px);
+}
+
+.animate-on-scroll.visible .cert-card:nth-child(1) {
+  opacity: 1;
+  transform: translateY(0);
+  transition-delay: 0.15s;
+}
+
+.animate-on-scroll.visible .cert-card:nth-child(2) {
+  opacity: 1;
+  transform: translateY(0);
+  transition-delay: 0.25s;
+}
+
+.animate-on-scroll.visible .cert-card:nth-child(3) {
+  opacity: 1;
+  transform: translateY(0);
+  transition-delay: 0.35s;
 }

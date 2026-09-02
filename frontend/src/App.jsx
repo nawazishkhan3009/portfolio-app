@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import './App.css'
 import { useLanguage } from './components/LanguageContext'
+import { useScrollAnimation } from './hooks/useScrollAnimation'
 import config from './config'
 
 const cloudLogos = {
@@ -33,11 +34,17 @@ function App() {
   const [countdown, setCountdown] = useState(UPDATE_INTERVAL_SECONDS)
   const isFetchingRef = useRef(false)
 
+  // Scroll animation refs
+  const aboutRef = useScrollAnimation(0.15)
+  const certificationsRef = useScrollAnimation(0.15)
+  const projectRef = useScrollAnimation(0.15)
+  const stackRef = useScrollAnimation(0.15)
+  const contactRef = useScrollAnimation(0.15)
+
   // Function to check if a PDF file exists - improved version
   const checkPdfExists = async (filePath) => {
     try {
       const response = await fetch(filePath, { method: 'HEAD' })
-      // Check the content-type to ensure it's actually a PDF
       const contentType = response.headers.get('content-type')
       return response.ok && contentType && contentType.includes('application/pdf')
     } catch {
@@ -151,7 +158,6 @@ function App() {
       about: {
         title: 'Über mich',
         text1: 'Ich bin Cloud- & Platform-Engineer mit einer Leidenschaft für Automatisierung und Observability. Ich spezialisiere mich auf den Aufbau von Kubernetes-Clustern, die Implementierung von GitOps-Workflows und die Gestaltung von Multi-Cloud-Architekturen — Infrastructure as Code mit derselben Sorgfalt wie Anwendungscode.',
-        text2: 'Dieses Portfolio ist eine Live-Demonstration dieser Prinzipien, bereitgestellt über vier Cloud-Provider mit Terraform, Argo CD und Flux CD.',
         language: '🇩🇪 Fließend in Englisch und Deutsch (C1-Niveau) — ich arbeite gerne in internationalen, kollaborativen Umgebungen.'
       },
       certifications: {
@@ -276,7 +282,7 @@ function App() {
   return (
     <div className="app">
       <nav className="navbar">
-        <div className="nav-brand">Cloud | DevOps | Platform </div>
+        <div className="nav-brand">Cloud | DevOps | Platform</div>
         <div className="nav-links">
           <a href="#about">{lang.nav[0]}</a>
           <a href="#certifications">{lang.nav[1]}</a>
@@ -296,6 +302,7 @@ function App() {
         <div className="hero-content">
           <div className="hero-text">
             <h1>{lang.hero.title}</h1>
+            <h2>{lang.hero.subtitle}</h2>
             <p className="hero-description">{lang.hero.description}</p>
             <div className="hero-stats">
               <div className="stat-item">
@@ -415,11 +422,14 @@ function App() {
         </div>
       </section>
 
-      <section id="about" className="about-section section-card">
+      <section 
+        id="about" 
+        className={`about-section section-card animate-on-scroll ${aboutRef.isVisible ? 'visible' : ''}`}
+        ref={aboutRef.ref}
+      >
         <h3 className="section-heading">{lang.about.title}</h3>
         <div className="about-content">
           <p className="about-text">{lang.about.text1}</p>
-          <p className="about-text">{lang.about.text2}</p>
           <p className="about-text highlight-text">{lang.about.language}</p>
           <div className="about-tags">
             <span className="tag">AWS</span>
@@ -435,7 +445,11 @@ function App() {
         </div>
       </section>
 
-      <section id="certifications" className="certifications-section section-card">
+      <section 
+        id="certifications" 
+        className={`certifications-section section-card animate-on-scroll ${certificationsRef.isVisible ? 'visible' : ''}`}
+        ref={certificationsRef.ref}
+      >
         <h3 className="section-heading">{lang.certifications.title}</h3>
         <div className="cert-grid">
           <div className="cert-card">
@@ -513,7 +527,11 @@ function App() {
         </div>
       </section>
 
-      <section id="project" className="project-section section-card">
+      <section 
+        id="project" 
+        className={`project-section section-card animate-on-scroll ${projectRef.isVisible ? 'visible' : ''}`}
+        ref={projectRef.ref}
+      >
         <h3 className="section-heading">{lang.project.title}</h3>
         <div className="project-content">
           <div className="project-header">
@@ -537,7 +555,11 @@ function App() {
         </div>
       </section>
 
-      <section id="stack" className="stack-section section-card">
+      <section 
+        id="stack" 
+        className={`stack-section section-card animate-on-scroll ${stackRef.isVisible ? 'visible' : ''}`}
+        ref={stackRef.ref}
+      >
         <h3 className="section-heading">{lang.stack.title}</h3>
         <div className="stack-grid">
           <div className="stack-card">
@@ -559,7 +581,11 @@ function App() {
         </div>
       </section>
 
-      <section id="contact" className="contact-section section-card">
+      <section 
+        id="contact" 
+        className={`contact-section section-card animate-on-scroll ${contactRef.isVisible ? 'visible' : ''}`}
+        ref={contactRef.ref}
+      >
         <h3 className="section-heading">{lang.contact.title}</h3>
         <p className="contact-text">{lang.contact.text}</p>
         <div className="contact-links">
