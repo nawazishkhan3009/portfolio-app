@@ -41,7 +41,7 @@ function App() {
   const stackRef = useScrollAnimation(0.15)
   const contactRef = useScrollAnimation(0.15)
 
-  // Function to check if a PDF file exists - improved version
+  // Function to check if a PDF file exists
   const checkPdfExists = async (filePath) => {
     try {
       const response = await fetch(filePath, { method: 'HEAD' })
@@ -204,17 +204,35 @@ function App() {
 
   const lang = language === 'en' ? t.en : t.de
 
-  const measureLatency = async (url) => {
+  // IMPROVED: Sequential latency measurement with delays
+  const measureLatency = async (url, index = 0) => {
     if (!url) return -1
+    
+    // Add a small delay between requests to avoid network contention
+    // 200ms delay between each measurement
+    if (index > 0) {
+      await new Promise(resolve => setTimeout(resolve, 200 * index))
+    }
+    
     const start = performance.now()
     try {
-      await fetch(`${url}?t=${Date.now()}`, {
+      // Use a unique timestamp to avoid caching
+      const response = await fetch(`${url}?t=${Date.now()}&r=${Math.random()}`, {
         method: 'HEAD',
         mode: 'no-cors',
         cache: 'no-cache',
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        },
       })
-      return Math.round(performance.now() - start)
-    } catch {
+      const end = performance.now()
+      const latency = Math.round(end - start)
+      console.log(`✅ Latency to ${url}: ${latency}ms`)
+      return latency
+    } catch (error) {
+      console.warn(`❌ Failed to measure latency to ${url}:`, error.message)
       return -1
     }
   }
@@ -228,12 +246,19 @@ function App() {
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`)
       const data = await response.json()
       
-      const clustersWithLatency = await Promise.all(
-        data.clusters.map(async (cluster) => {
-          const latency = cluster.online ? await measureLatency(cluster.url) : -1
-          return { ...cluster, latencyMs: latency }
+      // IMPROVED: Sequential latency measurement
+      const clustersWithLatency = []
+      for (let i = 0; i < data.clusters.length; i++) {
+        const cluster = data.clusters[i]
+        let latency = -1
+        if (cluster.online) {
+          latency = await measureLatency(cluster.url, i)
+        }
+        clustersWithLatency.push({
+          ...cluster,
+          latencyMs: latency
         })
-      )
+      }
       
       setStatus({
         clusters: clustersWithLatency,
@@ -298,8 +323,6 @@ function App() {
                 src={language === 'en' ? 'https://flagcdn.com/de.svg' : 'https://flagcdn.com/gb.svg'} 
                 alt={language === 'en' ? 'German' : 'English'} 
                 className="flag-img" 
-                width="20" 
-                height="15" 
               />
               {language === 'en' ? ' DE' : ' EN'}
             </span>

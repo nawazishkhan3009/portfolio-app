@@ -104,7 +104,7 @@ func getClusters() []clusterConfig {
 			Provider: "Azure",
 			Region:   "eastus",
 			URL:      aksURL,
-			Version:  "v0.0.0",
+			Version:  "v1.0.2",
 			Display:  "Azure AKS",
 			Emoji:    "🌍",
 		},

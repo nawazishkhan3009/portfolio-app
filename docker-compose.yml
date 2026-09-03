@@ -25,6 +25,7 @@ services:
     - CLUSTER_GCP_URL=https://gcp.nawazishkhan.click
     - CLUSTER_AZURE_URL=https://azure.nawazishkhan.click
     - CLUSTER_AWS_URL=https://aws.nawazishkhan.click
+    - CLUSTER_AKS_URL=https://aks.nawazishkhan.click
     build: ./backend
     ports:
       - "8080:8080"
