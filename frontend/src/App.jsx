@@ -404,43 +404,65 @@ function App() {
                   </p>
                   <div className="cluster-meta">
                     <span>
-                      {cluster.online ? (
-                        <span className="latency-tooltip-container">
+                      <span className="latency-tooltip-container">
+                        {/* Always show the clickable element */}
+                        {cluster.online ? (
                           <span className="latency-number">
                             {cluster.latencyMs && cluster.latencyMs > 0 ? `${cluster.latencyMs} ms` : '⏳ measuring'}
                           </span>
-                          <span className="latency-tooltip-icon">ⓘ</span>
-                          <span className="latency-tooltip-text">
-                            <div className="tooltip-content">
-                              <div className="tooltip-header">⚡ Network Performance</div>
-                              <div className="tooltip-body">
-                                <div className="tooltip-row">
-                                  <span className="tooltip-label">📍 You:</span>
-                                  <span className="tooltip-value">{status.userLocation || 'Unknown'}</span>
-                                </div>
-                                <div className="tooltip-row">
-                                  <span className="tooltip-label">☁️ Cluster:</span>
-                                  <span className="tooltip-value">{cluster.emoji || '🌐'} {cluster.region}</span>
-                                </div>
-                                <div className="tooltip-row">
-                                  <span className="tooltip-label">📏 Distance:</span>
-                                  <span className="tooltip-value">{formatDistance(cluster.distanceKm)}</span>
-                                </div>
-                                <div className="tooltip-divider"></div>
-                                <div className="tooltip-row highlight">
-                                  <span className="tooltip-label">⏱️ Measured RTT:</span>
-                                  <span className="tooltip-value" style={{ color: '#60a5fa', fontWeight: 'bold' }}>
-                                    {cluster.latencyMs && cluster.latencyMs > 0 ? `${cluster.latencyMs} ms` : 'measuring...'}
-                                  </span>
-                                </div>
-                                <div className="tooltip-footer">⚡ Measured directly from your browser</div>
+                        ) : (
+                          <span className="latency-na">NA</span>
+                        )}
+                        
+                        {/* Info icon - always visible */}
+                        <span className="latency-tooltip-icon">ⓘ</span>
+                        
+                        {/* Tooltip - same design for both online and offline */}
+                        <span className="latency-tooltip-text">
+                          <div className="tooltip-content">
+                            {/* Header changes based on status */}
+                            <div className="tooltip-header">
+                              {cluster.online ? '⚡ Network Performance' : '⛔ Cluster Offline'}
+                            </div>
+                            <div className="tooltip-body">
+                              <div className="tooltip-row">
+                                <span className="tooltip-label">📍 You:</span>
+                                <span className="tooltip-value">{status.userLocation || 'Unknown'}</span>
+                              </div>
+                              <div className="tooltip-row">
+                                <span className="tooltip-label">☁️ Cluster:</span>
+                                <span className="tooltip-value">{cluster.emoji || '🌐'} {cluster.region}</span>
+                              </div>
+                              <div className="tooltip-row">
+                                <span className="tooltip-label">📏 Distance:</span>
+                                <span className="tooltip-value">{formatDistance(cluster.distanceKm)}</span>
+                              </div>
+                              <div className="tooltip-divider"></div>
+                              <div className="tooltip-row highlight">
+                                <span className="tooltip-label">⏱️ Measured RTT:</span>
+                                <span className="tooltip-value" style={{ 
+                                  color: cluster.online ? '#60a5fa' : '#ef4444',
+                                  fontWeight: 'bold' 
+                                }}>
+                                  {cluster.online 
+                                    ? (cluster.latencyMs && cluster.latencyMs > 0 ? `${cluster.latencyMs} ms` : 'measuring...')
+                                    : 'N/A'
+                                  }
+                                </span>
+                              </div>
+                              <div className="tooltip-footer" style={{
+                                color: cluster.online ? '#6b7280' : '#ef4444',
+                                fontWeight: cluster.online ? 'normal' : 'bold'
+                              }}>
+                                {cluster.online 
+                                  ? '⚡ Measured directly from your browser'
+                                  : '⚠️ Possibly out of free credits'
+                                }
                               </div>
                             </div>
-                          </span>
+                          </div>
                         </span>
-                      ) : (
-                        <span className="latency-na">NA</span>
-                      )}
+                      </span>
                     </span>
                     <span className="version">{cluster.version}</span>
                   </div>

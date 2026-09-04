@@ -579,6 +579,7 @@ body {
   transition: opacity 0.3s ease, visibility 0.3s ease, transform 0.3s ease;
   transform: translateX(-50%) translateY(4px);
   z-index: 100;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
 }
 
 .latency-tooltip-container:hover .latency-tooltip-text {
@@ -607,7 +608,7 @@ body {
 .tooltip-row {
   display: flex;
   justify-content: space-between;
-  padding: 2px 0;
+  padding: 3px 0;
   gap: 16px;
 }
 
@@ -623,7 +624,7 @@ body {
 .tooltip-divider {
   height: 1px;
   background: #374151;
-  margin: 4px 0;
+  margin: 6px 0;
 }
 
 .tooltip-row.highlight {
@@ -631,8 +632,8 @@ body {
 }
 
 .tooltip-footer {
-  margin-top: 4px;
-  padding-top: 4px;
+  margin-top: 6px;
+  padding-top: 6px;
   border-top: 1px solid #374151;
   font-size: 0.7rem;
   color: #6b7280;
