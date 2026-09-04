@@ -390,6 +390,20 @@ body {
   padding: 4px 14px;
   border-radius: 20px;
   letter-spacing: 0.3px;
+  display: inline-block;
+}
+
+/* Badge Highlight Styles - subtle, no background */
+.user-location-badge .badge-highlight {
+  font-weight: 600;
+}
+
+.user-location-badge .badge-highlight.location {
+  color: #d1d5db !important;
+}
+
+.user-location-badge .badge-highlight.cluster {
+  color: #60a5fa !important;
 }
 
 .status-summary {
@@ -1328,4 +1342,22 @@ footer {
   opacity: 1;
   transform: translateY(0);
   transition-delay: 0.35s;
+}
+
+/* Current cluster highlight */
+.cluster-card.current-cluster {
+  transform: scale(1.02);
+  transition: all 0.3s ease;
+}
+
+.cluster-card.current-cluster:hover {
+  transform: scale(1.04);
+}
+
+.cluster-name-link {
+  transition: color 0.3s ease;
+}
+
+.cluster-name-link:hover {
+  color: #60a5fa !important;
 }

@@ -28,7 +28,8 @@ function App() {
     clusters: [],
     totalOnline: 0,
     totalCount: 0,
-    userLocation: 'Detecting...'
+    userLocation: 'Detecting...',
+    currentCluster: null
   })
   const [isLoading, setIsLoading] = useState(true)
   const [countdown, setCountdown] = useState(UPDATE_INTERVAL_SECONDS)
@@ -40,6 +41,33 @@ function App() {
   const projectRef = useScrollAnimation(0.15)
   const stackRef = useScrollAnimation(0.15)
   const contactRef = useScrollAnimation(0.15)
+  
+  // Helper function for location and message
+  const getCurrentClusterDisplay = () => {
+    if (!status.currentCluster) return null
+    const cluster = status.clusters.find(c => c.name === status.currentCluster)
+    return cluster ? cluster.display : null
+  }
+
+  const getLocationBadgeText = () => {
+    const location = status.userLocation || 'Detecting...'
+    const clusterDisplay = getCurrentClusterDisplay()
+    
+    // If we have both location and cluster info, show the full message with subtle highlighting
+    if (clusterDisplay && location !== 'Detecting...' && location !== 'Error' && location !== 'Unknown' && location !== 'unknown') {
+      return (
+        <span>
+          {lang.status.fetchedFrom}{' '}
+          <span className="badge-highlight location">📍 {location}</span>
+          {' '}{lang.status.via}{' '}
+          <span className="badge-highlight cluster">{clusterDisplay}</span>
+        </span>
+      )
+    }
+    
+    // Fallback to just location
+    return <span>📍 {location}</span>
+  }
 
   // Function to check if a PDF file exists
   const checkPdfExists = async (filePath) => {
@@ -50,6 +78,36 @@ function App() {
     } catch {
       return false
     }
+  }
+
+  // Determine the current cluster from the URL (frontend-only)
+  const getCurrentClusterFromURL = () => {
+    const hostname = window.location.hostname
+    
+    // Map hostnames to cluster names
+    const clusterMap = {
+      'gcp.nawazishkhan.click': 'portfolio-gke',
+      'azure.nawazishkhan.click': 'portfolio-azure',
+      'aks.nawazishkhan.click': 'portfolio-aks',
+      'aws.nawazishkhan.click': 'portfolio-aws',
+      'localhost': 'portfolio-azure',
+      '127.0.0.1': 'portfolio-azure',
+    }
+    
+    // Check for exact match
+    if (clusterMap[hostname]) {
+      return clusterMap[hostname]
+    }
+    
+    // Check for contains match (for subdomains like www.)
+    for (const [domain, clusterName] of Object.entries(clusterMap)) {
+      if (hostname.includes(domain) || domain.includes(hostname)) {
+        return clusterName
+      }
+    }
+    
+    // Default fallback
+    return 'portfolio-azure'
   }
 
   // State to track which PDFs exist
@@ -91,7 +149,9 @@ function App() {
         online: 'clusters online',
         updating: 'Updating in',
         connecting: 'Connecting...',
-        loading: 'Loading...'
+        loading: 'Loading...',
+        fetchedFrom: 'Your location',
+        via: 'fetched webpage from'  
       },
       about: {
         title: 'About Me',
@@ -153,7 +213,9 @@ function App() {
         online: 'Cluster online',
         updating: 'Aktualisierung in',
         connecting: 'Verbinde...',
-        loading: 'Lade...'
+        loading: 'Lade...',
+        fetchedFrom: 'Ihr Standort',
+        via: 'Webseite abgerufen von'
       },
       about: {
         title: 'Über mich',
@@ -259,12 +321,16 @@ function App() {
           latencyMs: latency
         })
       }
-      
+
+      // Determine current cluster from URL (frontend-only)
+      const currentClusterName = getCurrentClusterFromURL()
+
       setStatus({
         clusters: clustersWithLatency,
         totalOnline: data.totalOnline || 0,
         totalCount: data.totalCount || 0,
-        userLocation: data.userLocation || 'Unknown'
+        userLocation: data.userLocation || 'Unknown',
+        currentCluster: currentClusterName 
       })
     } catch (error) {
       console.error('Failed to fetch status:', error)
@@ -367,7 +433,7 @@ function App() {
       <section id="status" className="status-section section-card">
         <h3 className="section-heading">
           {lang.status.title}
-          <span className="user-location-badge">📍 {status.userLocation || 'Detecting...'}</span>
+          <span className="user-location-badge">{getLocationBadgeText()}</span>
         </h3>
         <div className="status-summary">
           {isLoading ? (
@@ -386,17 +452,44 @@ function App() {
         <div className="cluster-grid">
           {status.clusters.map(cluster => {
             const provider = getProviderFromName(cluster.name)
+            const isCurrentCluster = cluster.name === status.currentCluster
+            
             return (
               <div
                 key={cluster.name}
-                className={`cluster-card ${cluster.online ? 'online' : 'offline'}`}
-                style={{ borderColor: cluster.online ? cloudColors[provider] : '#ef4444' }}
+                className={`cluster-card ${cluster.online ? 'online' : 'offline'} ${isCurrentCluster ? 'current-cluster' : ''}`}
+                style={{ 
+                  borderColor: cluster.online ? cloudColors[provider] : '#ef4444',
+                  ...(isCurrentCluster && {
+                    boxShadow: `0 0 30px ${cloudColors[provider]}40, inset 0 0 30px ${cloudColors[provider]}10`,
+                  })
+                }}
               >
                 <div className="cluster-icon">
                   <img src={cloudLogos[provider] || cloudLogos.Azure} alt={provider} />
                 </div>
                 <div className="cluster-info">
-                  <h4 style={{ color: cloudColors[provider] || '#fff' }}>{cluster.display || cluster.name}</h4>
+                  <h4 style={{ color: cloudColors[provider] || '#fff' }}>
+                    {cluster.online ? (
+                      <a 
+                        href={cluster.url} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        style={{ 
+                          color: 'inherit', 
+                          textDecoration: 'none',
+                        }}
+                        className="cluster-name-link"
+                        title={`Open ${cluster.display} in new tab`}
+                      >
+                        {cluster.display || cluster.name}
+                      </a>
+                    ) : (
+                      <span style={{ opacity: 0.7 }}>
+                        {cluster.display || cluster.name}
+                      </span>
+                    )}
+                  </h4>
                   <p className="region">{cluster.emoji || '🌐'} {cluster.region}</p>
                   <p className="status-text">
                     <span className={`dot ${cluster.online ? 'green' : 'red'}`}></span>
